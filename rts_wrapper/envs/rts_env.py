@@ -9,6 +9,9 @@ from threading import Thread
 
 
 class MicroRts(gym.Env):
+    """
+    deprecated
+    """
     config = None
     port = None
     conn = None
@@ -54,8 +57,7 @@ class MicroRts(gym.Env):
         setup_commands = [
             "java",
             "-jar",
-            os.path.join(os.path.expanduser('~/microrts_env/rts_wrapper'),
-                         'microrts-master/out/artifacts/microrts_master_jar/microrts-master.jar'),
+            os.path.join(os.path.expanduser(self.config.microrts_path), 'rts_wrapper/microrts-master.jar'),
             "--map", os.path.join(os.path.expanduser(self.config.microrts_path), self.config.map_path),
             "--ai1_type", self.config.ai1_type,
             "--port1", str(self.port),

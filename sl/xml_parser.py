@@ -8,7 +8,8 @@ from os import listdir
 from zipfile import  ZipFile
 from rts_wrapper.envs.utils import extract_record
 import time
-import dill
+from .utils import store
+
 base_dir = '~/'
 tournament_dir = os.path.join(base_dir, "tournament_5/traces")
 saving_dir = os.path.join(base_dir, "rcds.pck")
@@ -108,23 +109,8 @@ def load_zips(path):
     return files_name
 
 
-def store(records, path):
-    """
-    store records to disk
-    :param path:
-    :param records:
-    :return:
-    """
 
-    with open(path, 'wb') as f:
-        records = Records(records)
-        dill.dump(records, f, recurse=True, protocol=dill.HIGHEST_PROTOCOL)
-    # f = open("/home/toby/rcds.pck", 'rb')
-    # rcd = dill.load(f)
-    # print(rcd.records.__len__())
-
-
-def main():
+def process():
     # TODO: arg parse
     start = time.time()
     gss = []
@@ -161,4 +147,4 @@ def main():
 if __name__ == '__main__':
 
     # pass
-    main()
+    process()

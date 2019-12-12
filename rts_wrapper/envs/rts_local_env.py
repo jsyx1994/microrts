@@ -1,5 +1,5 @@
-from rts_wrapper import Config
-from rts_wrapper.envs import MicroRts
+# from rts_wrapper.datatypes import config
+# from rts_wrapper.envs import MicroRts
 import gym
 from multiprocessing import Process, Pool
 from threading import  Thread
@@ -96,7 +96,7 @@ def main():
         while not obses[0].done:
             actions = []
             for i in range(len(players)):
-                players[i].think(obses[i])
+                # players[i].think(obses[i])
                 actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
             obses = env.step(actions)
             # print(obses)

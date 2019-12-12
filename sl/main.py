@@ -10,24 +10,27 @@ from sl.sl_data_processor import get_data
 def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    storage = get_data()
-    ac = ActorCritic(6, 6)
+    storage = get_data(saving_dir="/home/toby/rcds_rvr.pck")
+    model = ActorCritic(6, 6)
     writer = SummaryWriter()
 
 
     # input()
-    ac.to(device)
+    model.to(device)
 
     iteration = 1000000
     batch_size = 128
     criteria = torch.nn.NLLLoss()
-    optimizer = optim.Adam(ac.parameters(), lr=10e-6)
+    optimizer = optim.Adam(model.parameters(), lr=10e-6)
 
     for i in range(iteration):
 
         loss = 0
         sample_dict = storage.sample(batch_size)
         for key in sample_dict:
+            if key not in model.activated_agents:
+                continue
+            
             if sample_dict[key]:
                 spatial_features, unit_features, actions = sample_dict[key]
 
@@ -38,7 +41,7 @@ def main():
                 unit_features = torch.cat([unit_features, encoded_utt], dim=1)
                 actions = torch.from_numpy(actions).long().to(device)
                 # print(states.device, units.device)
-                probs = ac.actor_forward(key, spatial_features, unit_features)
+                probs = model.actor_forward(key, spatial_features, unit_features)
                 # print(probs.device)
                 # input()
                 # _actions = torch.zeros_like(prob)
@@ -54,11 +57,11 @@ def main():
         optimizer.zero_grad()
 
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(ac.parameters(), .1)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), .1)
         optimizer.step()
         # print(prob[i])
 
-    torch.save(ac.state_dict(), '../models/100k.pth')
+    torch.save(model.state_dict(), '../models/100k.pth')
 
 
 if __name__ == '__main__':

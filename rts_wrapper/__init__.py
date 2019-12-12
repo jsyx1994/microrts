@@ -3,6 +3,7 @@ import os
 from .datatypes import Config
 
 base_dir_path = os.path.dirname(os.path.realpath(__file__))
+# print(base_dir_path)
 # register will call this:
 """A specification for a particular instance of the environment. Used
 to register the parameters for official evaluations.
@@ -24,7 +25,7 @@ register(
     kwargs={'config': Config(
         ai1_type='socketAI',
         ai2_type='Passive',
-        map_path='maps/16x16/basesWorkers16x16.xml',
+        map_path=os.path.join(base_dir_path, 'maps/16x16/basesWorkers16x16.xml'),
         render=1,
         height=16,
         width=16,
@@ -40,7 +41,7 @@ register(
     kwargs={'config': Config(
         ai1_type='socketAI',
         ai2_type='Passive',
-        map_path='maps/6x6/baseTwoWorkersMaxResources6x6.xml',
+        map_path=os.path.join(base_dir_path, 'maps/6x6/baseTwoWorkersMaxResources6x6.xml'),
         height=6,
         width=6,
         render=1,
@@ -56,7 +57,7 @@ register(
     kwargs={'config': Config(
         ai1_type='socketAI',
         ai2_type='Passive',
-        map_path='maps/4x4/baseTwoWorkers4x4.xml',
+        map_path=os.path.join(base_dir_path, 'maps/4x4/baseTwoWorkers4x4.xml'),
         height=4,
         width=4,
         render=1,
@@ -72,7 +73,7 @@ register(
     kwargs={'config': Config(
         ai1_type='socketAI',
         ai2_type='Passive',
-        map_path='maps/6x6/baseWorkerResources6x6.xml',
+        map_path=os.path.join(base_dir_path, 'maps/6x6/baseWorkerResources6x6.xml'),
         height=6,
         width=6,
         render=1,
@@ -89,7 +90,7 @@ register(
         ai1_type="socketAI",
         ai2_type="socketAI",
 
-        map_path="maps/6x6/baseWorkerResources6x6.xml",
+        map_path=os.path.join(base_dir_path, "maps/6x6/baseWorkerResources6x6.xml"),
         height=6,
         width=6,
         render=1,
@@ -107,7 +108,7 @@ register(
         period=1,
         ai1_type='socketAI',
         ai2_type='Random',
-        map_path='maps/6x6/baseWorkerResources6x6.xml',
+        map_path=os.path.join(base_dir_path, 'maps/6x6/baseWorkerResources6x6.xml'),
         height=6,
         width=6,
         render=1,
@@ -125,10 +126,11 @@ register(
         ai1_type="socketAI",
         ai2_type="socketAI",
 
-        map_path="maps/16x16/basesWorkers16x16.xml",
+        map_path=os.path.join(base_dir_path, "maps/16x16/basesWorkers16x16.xml"),
         height=16,
         width=16,
         render=1,
+        period=1,
         max_cycles=5000,
         max_episodes=10000,
         )}

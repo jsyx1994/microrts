@@ -1,5 +1,4 @@
 import dill
-from sl.xml_parser import saving_dir
 from rts_wrapper.datatypes import Records
 from rts_wrapper.envs.utils import state_encoder, unit_feature_encoder
 
@@ -8,15 +7,11 @@ import torch
 from sl.play_buffer import PlayBuffer
 from algo.model import ActorCritic
 from algo.eval import evaluate_game
+from .utils import load
 
 
-def load(path) -> Records:
-    with open(path, 'rb') as f:
-        rcd = dill.load(f)
-    return rcd
 
-
-def get_data() -> PlayBuffer:
+def get_data(saving_dir) -> PlayBuffer:
     storage = PlayBuffer()
     rcds = load(saving_dir)
     print("total records:{}".format(rcds.records.__len__()))

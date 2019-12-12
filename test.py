@@ -1,7 +1,7 @@
 import gym
 import rts_wrapper
 import os
-from rts_wrapper.datatypes import *
+from rts_wrapper.datatypes import List, Any
 from rts_wrapper.envs.utils import unit_feature_encoder,network_action_translator, encoded_utt_dict
 import torch
 from algo.replay_buffer import ReplayBuffer
@@ -11,7 +11,6 @@ from algo.replay_buffer import ReplayBuffer
 # env.action_space.sample()
 
 from algo.model import CNNBase, Critic, Actor, ActorCritic
-
 
 def initialize_network(height, width, channel):
     cnnbase = CNNBase(height, width, channel)
@@ -138,6 +137,5 @@ def test_self_play():
 
 if __name__ == '__main__':
     test_pve()
-
 # print(rts_wrapper.base_dir_path)
 # print(os.path.join(rts_wrapper.base_dir_path, 'microrts-master/out/artifacts/microrts_master_jar/microrts-master.jar'))

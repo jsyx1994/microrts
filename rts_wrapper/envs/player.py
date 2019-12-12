@@ -1,6 +1,5 @@
 import socket
-
-from rts_wrapper.envs.utils import signal_wrapper, pa_to_jsonable
+from .utils import signal_wrapper, pa_to_jsonable
 
 
 class Player(object):
@@ -81,3 +80,7 @@ class Player(object):
 
     def _recv_msg(self):
         return self.conn.recv(65536).decode('utf-8')
+
+
+if __name__ == "__main__":
+    print("OK")

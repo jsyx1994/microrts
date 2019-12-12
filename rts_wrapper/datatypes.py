@@ -64,14 +64,6 @@ UTT_ORI = '{"moveConflictResolutionStrategy":3,"unitTypes":[{"ID":0, "name":"Res
           '"canAttack":true, "produces":[], "producedBy":["Barracks"]}]} '
 
 
-@dataclass
-class Observations:
-    reward: float
-    observation: Any
-    done: bool
-    info: Dict
-
-
 class BaseAction(Enum):
     __type_name__ = UNIT_TYPE_NAME_BASE
 
@@ -149,6 +141,14 @@ action_collection = [BaseAction, BarracksAction, WorkerAction, LightAction, Heav
 AGENT_ACTIONS_MAP = {}
 for _action in action_collection:
     AGENT_ACTIONS_MAP[_action.__type_name__] = _action
+
+
+@dataclass
+class Observations:
+    reward: float
+    observation: Any
+    done: bool
+    info: Dict
 
 
 @dataclass
@@ -252,7 +252,7 @@ class Config:
     utt: Optional[dict] = from_dict(data_class=UnitTypeTable, data=json.loads(UTT_ORI))
     # auto_port: Optional[bool] = False
     # client_port: Optional[int] = 0
-    microrts_path: Optional[str] = "~/microrts_env"
+    microrts_path: Optional[str] = "~/microrts"
     microrts_repo_path: Optional[str] = ""
     client_ip: Optional[str] = "127.0.0.1"
 
