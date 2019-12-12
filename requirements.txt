@@ -1,4 +1,4 @@
-tensorboardpip3
+tensorboard
 xmltodict
 dill
 cloudpickle==1.2.2
