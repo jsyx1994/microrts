@@ -24,21 +24,6 @@ def get_data(saving_dir) -> PlayBuffer:
             storage.push(gs,curr_player, a.unit, a.unitAction)
     return storage
 
-s
-def test():
-    rcds = load(saving_dir)
-
-    ac = ActorCritic(8, 8)
-    for r in rcds.records:
-        # print(r)
-        gs          = r.gs
-        actions     = r.actions
-        curr_player = r.player
-        shared_states = torch.from_numpy(state_encoder(gs, curr_player)).float().unsqueeze(0)
-        for a in actions:
-            unit_feature = torch.from_numpy(unit_feature_encoder(a.unit, gs.pgs.height, gs.pgs.width)).float().unsqueeze(0)
-            ac.actor_forward(a.unit.type, shared_states, unit_feature)
-            # print(unit_feature)
 
 
 if __name__ == '__main__':

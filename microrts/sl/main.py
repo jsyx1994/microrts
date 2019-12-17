@@ -5,6 +5,8 @@ from microrts.algo.model import ActorCritic
 from torch import optim
 import torch
 from microrts.sl.sl_data_processor import get_data
+import microrts.settings as settings
+import os
 
 
 def main():
@@ -18,10 +20,10 @@ def main():
     # input()
     model.to(device)
 
-    iteration = 1000000
+    iteration = int(1e6)
     batch_size = 128
     criteria = torch.nn.NLLLoss()
-    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=3e-6)
 
     for i in range(iteration):
 
@@ -61,7 +63,7 @@ def main():
         optimizer.step()
         # print(prob[i])
 
-    torch.save(model.state_dict(), '../models/1M.pth')
+    torch.save(model.state_dict(), os.path.join(settings.microrts_path, "models", "1M.pth"))
 
 
 if __name__ == '__main__':

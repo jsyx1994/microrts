@@ -25,6 +25,3 @@ def evaluate_game(eval_env: str, model, mode="stochastic"):
         print(winner)
 
     env.close()
-
-import os
-print(os.path.pardir)
