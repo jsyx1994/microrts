@@ -3,6 +3,7 @@ from typing import List, Any, Dict, Optional
 from enum import Enum
 from dacite import from_dict
 import json
+import microrts.settings as settings
 
 ACTION_TYPE_NONE = 0
 ACTION_TYPE_MOVE = 1
@@ -250,11 +251,9 @@ class Config:
     period: Optional[int] = 5
     render: Optional[int] = 1
     utt: Optional[dict] = from_dict(data_class=UnitTypeTable, data=json.loads(UTT_ORI))
-    # auto_port: Optional[bool] = False
-    # client_port: Optional[int] = 0
-    microrts_path: Optional[str] = "~/microrts"
+    microrts_path: Optional[str] = settings.microrts_path
     microrts_repo_path: Optional[str] = ""
-    client_ip: Optional[str] = "127.0.0.1"
+    client_ip: Optional[str] = settings.client_ip
 
     window_size: Optional[int] = 1
     evaluation_filename: Optional[str] = ""

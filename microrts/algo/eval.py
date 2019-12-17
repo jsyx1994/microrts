@@ -1,6 +1,6 @@
 import gym
 import torch
-from rts_wrapper.envs.utils import action_sampler_v1
+from microrts.rts_wrapper.envs.utils import action_sampler_v1
 
 
 def evaluate_game(eval_env: str, model, mode="stochastic"):
@@ -25,3 +25,6 @@ def evaluate_game(eval_env: str, model, mode="stochastic"):
         print(winner)
 
     env.close()
+
+import os
+print(os.path.pardir)

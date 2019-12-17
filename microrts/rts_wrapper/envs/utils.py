@@ -4,7 +4,7 @@
 import socket
 from dataclasses import asdict
 from typing import List, Any
-from rts_wrapper.datatypes import *
+from .datatypes import *
 import json
 import numpy as np
 import time

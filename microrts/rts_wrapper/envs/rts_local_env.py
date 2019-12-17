@@ -6,10 +6,10 @@ from threading import  Thread
 from multiprocessing.pool import ThreadPool
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
-from rts_wrapper.envs import BaseEnv
-from rts_wrapper.envs.player import Player
-from rts_wrapper.envs.utils import get_available_port, network_simulator
-from rts_wrapper.datatypes import Observations
+from .rts_base_env import BaseEnv
+from .player import Player
+from .utils import get_available_port, network_simulator
+from .datatypes import Observations
 from dacite import from_dict
 
 

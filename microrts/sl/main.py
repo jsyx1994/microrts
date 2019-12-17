@@ -1,10 +1,10 @@
 from torch.utils.tensorboard import SummaryWriter
 
-from rts_wrapper.envs.utils import encoded_utt_dict
-from algo.model import ActorCritic
+from microrts.rts_wrapper.envs.utils import encoded_utt_dict
+from microrts.algo.model import ActorCritic
 from torch import optim
 import torch
-from sl.sl_data_processor import get_data
+from microrts.sl.sl_data_processor import get_data
 
 
 def main():
@@ -21,7 +21,7 @@ def main():
     iteration = 1000000
     batch_size = 128
     criteria = torch.nn.NLLLoss()
-    optimizer = optim.Adam(model.parameters(), lr=10e-6)
+    optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
 
     for i in range(iteration):
 
@@ -61,7 +61,7 @@ def main():
         optimizer.step()
         # print(prob[i])
 
-    torch.save(model.state_dict(), '../models/100k.pth')
+    torch.save(model.state_dict(), '../models/1M.pth')
 
 
 if __name__ == '__main__':

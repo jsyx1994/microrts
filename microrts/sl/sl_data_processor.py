@@ -1,12 +1,12 @@
 import dill
-from rts_wrapper.datatypes import Records
-from rts_wrapper.envs.utils import state_encoder, unit_feature_encoder
+from microrts.rts_wrapper.envs.datatypes import Records
+from microrts.rts_wrapper.envs.utils import state_encoder, unit_feature_encoder
 
 
 import torch
-from sl.play_buffer import PlayBuffer
-from algo.model import ActorCritic
-from algo.eval import evaluate_game
+from microrts.sl.play_buffer import PlayBuffer
+from microrts.algo.model import ActorCritic
+from microrts.algo.eval import evaluate_game
 from .utils import load
 
 
@@ -24,7 +24,7 @@ def get_data(saving_dir) -> PlayBuffer:
             storage.push(gs,curr_player, a.unit, a.unitAction)
     return storage
 
-
+s
 def test():
     rcds = load(saving_dir)
 

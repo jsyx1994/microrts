@@ -1,5 +1,5 @@
 import dill
-from rts_wrapper.datatypes import Records
+from microrts.rts_wrapper.envs.datatypes import Records
 
 def store(records, path):
     """

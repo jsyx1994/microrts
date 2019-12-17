@@ -1,7 +1,8 @@
 from dacite import from_dict
-from rts_wrapper.datatypes import Records, Record
+from microrts.rts_wrapper.envs.datatypes import Records, Record
 import json
 import os
+import microrts.settings as settings
 
 from .utils import store
 
@@ -14,10 +15,10 @@ def process():
     records_list = []
     cnt = 0
     for filename in os.listdir(path):
-        if cnt > 480:
-            break
         cnt += 1
         print(cnt)
+        if cnt > 480:
+            break
         if cnt % 100 == 0:
             print('Game No.{} processed'.format(cnt))
         json_arr = json.load(open(os.path.join(path,filename))) 

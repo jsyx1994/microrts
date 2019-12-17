@@ -1,4 +1,5 @@
 import socket
+from microrts.algo.utils import load_model
 from .utils import signal_wrapper, pa_to_jsonable
 
 
@@ -20,8 +21,8 @@ class Player(object):
         self.port = port
         self.client_ip = client_ip
 
-    def load_brain(self):
-        raise NotImplementedError
+    def load_brain(self, nn_path, height, width):
+        self.brain = load_model(nn_path, height, width)
 
     def join(self):
         """

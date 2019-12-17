@@ -2,11 +2,11 @@ import xml.etree.ElementTree as ET
 from dacite import from_dict
 import json
 import xmltodict
-from rts_wrapper.datatypes import GameState, Records
+from microrts.rts_wrapper.envs.datatypes import GameState, Records
 import os
 from os import listdir
 from zipfile import  ZipFile
-from rts_wrapper.envs.utils import extract_record
+from microrts.rts_wrapper.envs.utils import extract_record
 import time
 from .utils import store
 

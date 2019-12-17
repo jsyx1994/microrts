@@ -1,6 +1,6 @@
 import numpy as np
-from rts_wrapper.envs.utils import state_encoder, unit_feature_encoder, game_action_translator
-from rts_wrapper.datatypes import *
+from microrts.rts_wrapper.envs.utils import state_encoder, unit_feature_encoder, game_action_translator
+from microrts.rts_wrapper.envs.datatypes import *
 from dataclasses import dataclass
 from numpy import random
 
