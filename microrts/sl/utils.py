@@ -11,7 +11,7 @@ def store(records, path):
 
     with open(path, 'wb') as f:
         records = Records(records)
-        dill.dump(records, f, recurse=True, protocol=dill.HIGHEST_PROTOCOL)
+        dill.dump(records, f, recurse=True)
     # f = open("/home/toby/rcds.pck", 'rb')
     # rcd = dill.load(f)
     # print(rcd.records.__len__())

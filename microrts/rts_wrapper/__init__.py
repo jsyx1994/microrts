@@ -52,6 +52,55 @@ register(
     )}
 )
 
+# eval
+register(
+    id="EvalAgainstRandom-v0",
+    entry_point='microrts.rts_wrapper.envs:BattleEnv',
+    kwargs={'config': Config(
+        ai1_type="socketAI",
+        ai2_type="RandomBiased",
+        map_path=os.path.join(base_dir_path, 'maps/6x6/baseTwoWorkersMaxResources6x6.xml'),
+        height=6,
+        width=6,
+        render=1,
+        period=1,
+        max_cycles=3000,
+        max_episodes=10000,
+        )}
+)
+
+register(
+    id="EvalAgainstPassive-v0",
+    entry_point='microrts.rts_wrapper.envs:BattleEnv',
+    kwargs={'config': Config(
+        ai1_type="socketAI",
+        ai2_type="Passive",
+        map_path=os.path.join(base_dir_path, 'maps/6x6/baseTwoWorkersMaxResources6x6.xml'),
+        height=6,
+        width=6,
+        render=1,
+        period=1,
+        max_cycles=3000,
+        max_episodes=10000,
+        )}
+)
+
+register(
+    id="EvalAgainstSocketAI-v0",
+    entry_point='microrts.rts_wrapper.envs:BattleEnv',
+    kwargs={'config': Config(
+        ai1_type="socketAI",
+        ai2_type="socketAI",
+        map_path=os.path.join(base_dir_path, 'maps/6x6/baseTwoWorkersMaxResources6x6.xml'),
+        height=6,
+        width=6,
+        render=1,
+        period=1,
+        max_cycles=3000,
+        max_episodes=10000,
+        )}
+)
+
 # test
 register(
     id="LargeMapTest-v0",

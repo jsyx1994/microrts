@@ -38,8 +38,18 @@ class NNBase(nn.Module):
 
 class ActorCritic(nn.Module):
 
-    def __init__(self, map_height, map_width, input_channel=21, unit_feature_size=18):
+    def __init__(self, map_size, input_channel=21, unit_feature_size=18):
+        """[summary]
+        
+        Arguments:
+            map_size {tuple} -- (map_height, map_width)
+        
+        Keyword Arguments:
+            input_channel {int} -- [description] (default: {21})
+            unit_feature_size {int} -- [description] (default: {18})
+        """
         super(ActorCritic, self).__init__()
+        map_height, map_width = map_size
         self.shared_out_size = 256
 
         self.activated_agents = [
@@ -128,14 +138,6 @@ class ActorCritic(nn.Module):
         return x
 
     def actor_forward(self, actor_type: str, spatial_feature: Tensor, unit_feature: Tensor):
-        # b_sz = spatial_feature.size(0)
-        #
-        # if training:
-        #     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        # else:
-        #     device = torch.device("cpu")
-        #
-        # encoded_utt = encoded_utt.repeat(b_sz, 1).to(device)
 
         x = self._shared_forward(spatial_feature)
 

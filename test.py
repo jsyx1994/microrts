@@ -6,75 +6,33 @@ from microrts.rts_wrapper.envs.utils import unit_feature_encoder,network_action_
 import torch
 from microrts.algo.replay_buffer import ReplayBuffer
 from microrts.algo.model import ActorCritic
+import microrts.settings as settings
+from microrts.rts_wrapper.envs.utils import action_sampler_v1
 
 
-def action_sampler_v1(model:ActorCritic, state, info, mode='stochastic'):
-    assert mode in ['stochastic', 'deterministic']
-    time_stamp = info["time_stamp"]
-    # if time_stamp % 1 != 0:
-    #     return []
-    unit_valid_actions = info["unit_valid_actions"]  # unit and its valid actions
-    height, width = info["map_size"]
-    player_resources = info["player_resources"]  # global resource situation, default I'm player 0
-    current_player = info["current_player"]
-
-    spatial_feature = torch.from_numpy(state).float().unsqueeze(0)
-    samples = []
-    for uva in unit_valid_actions:
-        u  = uva.unit
-        unit_feature = torch.from_numpy(unit_feature_encoder(u, height, width)).float().unsqueeze(0)
-        encoded_utt = torch.from_numpy(encoded_utt_dict[u.type]).float().unsqueeze(0)
-
-        unit_feature = torch.cat([unit_feature, encoded_utt], dim=1)
-        if mode == 'stochastic':
-            sampled_unit_action = model.stochastic_action_sampler(u.type, spatial_feature, unit_feature)
-        elif mode == 'deterministic':
-            sampled_unit_action = model.deterministic_action_sampler(u.type, spatial_feature, unit_feature)
-
-        samples.append((uva, sampled_unit_action))
-
-    return network_action_translator(samples)
+from microrts.algo.utils import load_model
+from microrts.algo.model import ActorCritic
+from microrts.algo.replay_buffer import ReplayBuffer
 
 
-def test_pve():
-    env = gym.make("CurriculumBaseWorker-v0")
-    # env = gym.make("Microrts-v0")
-    # env = gym.make("OneWorkerAndBaseWithResources-v0")
-    map_height, map_width = env.config.height, env.config.width
-    model = ActorCritic(map_height, map_width)
-    # model.load_state_dict(torch.load("./models/100k.pth"))
-    replay_buffer = ReplayBuffer(100)
-    for _ in range(env.config.max_episodes):
-        obs_t, _, done, info_t = env.reset()  # deserting the reward
-        while not done:
-            # action = env.sample(info["unit_valid_actions"])
-            # action = env.network_simulate(info_t["unit_valid_actions"])
-            # action = action_sampler_v0(actor, critic, state_t, info_t)
-            action = action_sampler_v1(model, obs_t, info_t)
-            # print(action)
-            state_tp1, reward, done, info_tp1 = env.step(action)
-
-            obs_t, info_t = state_tp1, info_tp1  # assign new state and info from environment
-            # replay_buffer.push(state_t,info_t,ac)
-
-        winner = env.get_winner()  # required
-        print(winner)
-
-    env.close()
-
-
-
-def main():
-    env = gym.make("CurriculumBaseWorker-v0")
+def evaluate():
+    env = gym.make("EvalAgainstRandom-v0")
     players = env.players
-
+    assert env.player1 is not None, "player No.1 can not be missed"
+    eval_model = load_model(os.path.join(settings.models_dir, "_1M.pth"), env.map_size)
+    env.player1.load_brain(eval_model)
+    # env.player1.load_brain(os.path.join(settings.models_dir, "1M.pth"), env.map_size[0], env.map_size[1])
+    # input()
     for _ in range(env.max_episodes):
         obses = env.reset()  # p1 and p2 reset
         while not obses[0].done:
             actions = []
             for i in range(len(players)):
                 # players[i].think(obses[i])
-                actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
+                # print(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
+                actions.append(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
+                # input()
+                # actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
             obses = env.step(actions)
             # print(obses)
         winner = env.get_winner()
@@ -82,7 +40,57 @@ def main():
 
     print(env.setup_commands)
 
+
+def self_play(nn_path=None):
+    """self play program
+    
+    Arguments:
+        nn_path {str} -- path to model, if None, start from scratch
+        map_size {tuple} -- (height, width)
+    """     
+
+    env = gym.make("CurriculumBaseWorker-v0")
+    assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
+    memory = ReplayBuffer(10000)
+
+    start_from_scratch = nn_path is None
+    
+    players = env.players
+
+    if start_from_scratch:
+        nn = ActorCritic(env.map_size)
+    else:
+        nn = load_model(nn_path, env.map_size)
+
+
+    for p in players:
+        p.load_brain(nn)
+    
+    for _ in range(env.max_episodes):
+        obses_t = env.reset()  # p1 and p2 reset
+        while not obses_t[0].done:
+            actions = []
+            for i in range(len(players)):
+                # players[i].think(obses[i])
+                # print(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
+                actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info)[0])
+                # input()
+                # actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
+            obses_tp1 = env.step(actions)
+            # memory.push(
+            #     s_t=observation,
+            #     info_t=
+            # )
+            # print(obses)
+        winner = env.get_winner()
+        print(winner)
+
+    print(env.setup_commands)
+
+
+
 if __name__ == '__main__':
-    main()
+    self_play()
+    # evaluate()
 # print(rts_wrapper.base_dir_path)
 # print(os.path.join(rts_wrapper.base_dir_path, 'microrts-master/out/artifacts/microrts_master_jar/microrts-master.jar'))

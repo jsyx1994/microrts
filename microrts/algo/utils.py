@@ -1,8 +1,8 @@
 from .model import ActorCritic
 import torch
 
-def load_model(path, height, width) -> ActorCritic:
-    model = ActorCritic(height, width)
+def load_model(path, map_size) -> ActorCritic:
+    model = ActorCritic(map_size)
     model.load_state_dict(torch.load(path))
     return model
 

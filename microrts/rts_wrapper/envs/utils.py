@@ -15,6 +15,21 @@ rd.seed()
 
 
 def action_sampler_v1(model, state, info, mode='stochastic'):
+    """Sample actions from one game state for all units player i owns
+    
+    Arguments:
+        model {[type]} -- [description]
+        state {[type]} -- [description]
+        info {[type]} -- [description]
+    
+    Keyword Arguments:
+        mode {str} -- [description] (default: {'stochastic'})
+    
+    Returns:
+        tuple(list, list) -- 
+        1. list of (unit valid actions, sampled action) for all units player i owns,unit valid actions are used for action translating
+        2. list of (unit, sampled action) for all units player i owns. Use it to be stored in buffer while training
+    """
     assert mode in ['stochastic', 'deterministic']
     time_stamp = info["time_stamp"]
     # if time_stamp % 1 != 0:
@@ -26,6 +41,7 @@ def action_sampler_v1(model, state, info, mode='stochastic'):
 
     spatial_feature = torch.from_numpy(state).float().unsqueeze(0)
     samples = []
+    uas = []
     for uva in unit_valid_actions:
         u  = uva.unit
         unit_feature = torch.from_numpy(unit_feature_encoder(u, height, width)).float().unsqueeze(0)
@@ -38,8 +54,10 @@ def action_sampler_v1(model, state, info, mode='stochastic'):
             sampled_unit_action = model.deterministic_action_sampler(u.type, spatial_feature, unit_feature)
 
         samples.append((uva, sampled_unit_action))
-
-    return network_action_translator(samples)
+        uas.append((u, sampled_unit_action))
+    print(samples)
+    input()
+    return samples, uas
 
 
 def get_available_port():
@@ -67,9 +85,17 @@ def pa_to_jsonable(pas: List[PlayerAction]) -> str:
 
 
 def signal_wrapper(raw):
-    """
-    wrap useful info form raw
-    :return: observation, reward, done, info
+    """wrap useful signal from java raw
+    
+    Arguments:
+        raw {str} -- msg recieved from java
+    
+    Returns: 
+        tuple of --
+        observation {np.array}
+        reward {float}
+        done {bool}
+        info {dict}
     """
     curr_player = int(raw.split('\n')[0].split()[1])
     gs_wrapper = from_dict(data_class=GsWrapper, data=json.loads(raw.split('\n')[1]))

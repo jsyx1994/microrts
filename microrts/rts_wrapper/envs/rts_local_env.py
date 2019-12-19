@@ -14,6 +14,8 @@ from dacite import from_dict
 
 
 class BattleEnv(BaseEnv):
+    player1 = None
+    player2 = None
     players = []
 
     @property
@@ -34,14 +36,11 @@ class BattleEnv(BaseEnv):
             player = Player(0, self.config.client_ip, 9898 if self.DEBUG else get_available_port())
             # player = Player(0, self.config.client_ip, get_available_port())
             self._add_commands("--port" + str(1 + player.id), str(player.port))
+            self.player1 = player
             self.players.append(player)
         if self.ai2_type.startswith("socket"):
             player = Player(1, self.config.client_ip, 9898 if self.DEBUG else get_available_port())
-
-            # if self.DEBUG:
-            #     player = Player(1, self.config.client_ip, 8787)
-            # else:
-            #     player = Player(1, self.config.client_ip, get_available_port())
+            self.player2 = player
             self._add_commands("--port" + str(1 + player.id), str(player.port))
             self.players.append(player)
 

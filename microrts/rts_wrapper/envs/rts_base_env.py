@@ -8,9 +8,23 @@ from .datatypes import Config, UnitValidAction, AGENT_ACTIONS_MAP, BaseAction, B
     LightAction, HeavyAction, RangedAction
 from .utils import network_action_translator, get_available_port
 from .player import Player
+import microrts.settings as settings
 
 
 class BaseEnv(gym.Env):
+    """Used to create the trainning environment for RL
+    and EVERYTHING correlated to the java game Env communication should be processed here
+    
+    Arguments:
+        gym {[type]} -- [description]
+    
+    Raises:
+        NotImplementedError: [description]
+        NotImplementedError: [description]
+    
+    Returns:
+        [type] -- [description]
+    """
     setup_commands = None
     config = None
     DEBUG = False
@@ -63,8 +77,7 @@ class BaseEnv(gym.Env):
         """
         self.setup_commands = [
             "java",
-            "-jar",
-            os.path.join(self.config.microrts_path ,'rts_wrapper/microrts-master.jar'),
+            "-jar", settings.jar_dir,
             "--map", os.path.join(self.config.microrts_path, self.config.map_path),
             "--ai1_type", self.config.ai1_type,
             "--ai2_type", self.config.ai2_type,

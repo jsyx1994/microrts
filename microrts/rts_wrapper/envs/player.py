@@ -1,9 +1,11 @@
 import socket
 from microrts.algo.utils import load_model
-from .utils import signal_wrapper, pa_to_jsonable
+from .utils import signal_wrapper, network_action_translator, pa_to_jsonable, action_sampler_v1
 
 
 class Player(object):
+    """Part of gym Environment
+    """
     conn = None
     type = None
     port = None
@@ -21,8 +23,14 @@ class Player(object):
         self.port = port
         self.client_ip = client_ip
 
-    def load_brain(self, nn_path, height, width):
-        self.brain = load_model(nn_path, height, width)
+    # def load_brain(self, **kwargs):
+    #     pass
+
+    # def load_brain(self, nn_path, height, width):
+    #     self.brain = load_model(nn_path, height, width)
+
+    def load_brain(self, nn):
+        self.brain = nn
 
     def join(self):
         """
@@ -48,17 +56,27 @@ class Player(object):
         # print(raw)
         return signal_wrapper(raw)
 
-    def think(self, helper, **kwargs):
+    def think(self, **kwargs):
+        """figure out the action according to helper function and obs
+        
+        Arguments:
+            kwargs:
+                model
+                obs
+                info
+        Raises:
+            NotImplementedError: [description]
         """
-        :param helper: the function
-        figure out a solution according to obs
-        """
-        raise NotImplementedError
+        assert self.brain is not None
+        obs = kwargs["obs"]
+        info = kwargs["info"]
+        return action_sampler_v1(self.brain, obs, info)
 
     def act(self, action):
         """
         do some action in the env together with other players
         """
+        action = network_action_translator(action)
         pa = pa_to_jsonable(action)
         self._send_msg(pa)
 

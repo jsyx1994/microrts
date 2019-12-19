@@ -12,7 +12,7 @@ import os
 def main():
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    storage = get_data(saving_dir="/home/toby/rcds_rvr.pck")
+    storage = get_data(saving_dir=os.path.join(settings.data_dir, "rvr6x6.pck"))
     model = ActorCritic(6, 6)
     writer = SummaryWriter()
 

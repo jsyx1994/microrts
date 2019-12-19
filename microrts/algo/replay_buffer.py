@@ -1,71 +1,73 @@
 import numpy as np
 import random
+from dataclasses import dataclass
+from collections import namedtuple
+from microrts.rts_wrapper.envs.datatypes import GameState, List, PlayerAction
 
+@dataclass
+class Prerequisite:
+    state  : np.array
+    info   : dict
+
+@dataclass
+class Transition:
+    obs_t   : Prerequisite
+    joint_action  : List[PlayerAction]
+    reward  : float
+    obs_tp1 : Prerequisite
 
 class ReplayBuffer(object):
-    def __init__(self, size):
-        """Create Replay buffer.
-        Parameters
-        ----------
-        size: int
-            Max number of transitions to store in the buffer. When the buffer
+    def __init__(self, size, frame_history_len=1):
+        """Create Replay buffer
+        Arguments:
+            size {int} -- Storage capacity i.e. xax number of transitions to store in the buffer. When the buffer
             overflows the old memories are dropped.
+        
+        Keyword Arguments:
+            frame_history_len {int} -- Num of frames taken for trainning input (default: {1})
         """
+
         self._storage = []
         self._maxsize = size
-        self._next_idx = 0
+        self._next_idx = 0        # next pos to store the new data
+        self._frame_history_len = frame_history_len
 
     def __len__(self):
+        """Show current capacity
+        
+        Returns:
+            int -- how many samples stored in the buffer?
+        """
         return len(self._storage)
 
-    def push(self, actor_type, obs_t, info_t, action, reward, obs_tp1, info_tp1, done):
-        data = (obs_t, info_t, action, reward, obs_tp1, info_tp1, done)
-
-        if self._next_idx >= len(self._storage):
-            self._storage.append(data)
-        else:
-            self._storage[self._next_idx] = data
-        self._next_idx = (self._next_idx + 1) % self._maxsize
-
-    def _encode_sample(self, idxes):
-        obses_t, infos_t, actions, rewards, obses_tp1, infos_tp1, dones = [], [], [], [], [], [], []
-        for i in idxes:
-            data = self._storage[i]
-            obs_t, info_t, action, reward, obs_tp1, info_tp1, done = data
-            obses_t.append(np.array(obs_t, copy=False))
-            infos_t.append(info_t)  # new
-            actions.append(np.array(action, copy=False))
-            rewards.append(reward)
-            obses_tp1.append(np.array(obs_tp1, copy=False))
-            infos_t.append(info_tp1)    # new
-            dones.append(done)
-        return np.array(obses_t), np.array(actions), np.array(rewards), np.array(obses_tp1), np.array(dones)
-
-    def sample(self, batch_size):
-        """Sample a batch of experiences.
-        Parameters
-        ----------
-        batch_size: int
-            How many transitions to sample.
-        Returns
-        -------
-        obs_batch: np.array
-            batch of observations
-        act_batch: np.array
-            batch of actions executed given obs_batch
-        rew_batch: np.array
-            rewards received as results of executing act_batch
-        next_obs_batch: np.array
-            next set of observations seen after executing act_batch
-        done_mask: np.array
-            done_mask[i] = 1 if executing act_batch[i] resulted in
-            the end of an episode and 0 otherwise.
+    def push(self, s_t, info_t, joint_action, reward, s_tp1, info_tp1, done):
+        """Saves a transition
+        
+        Arguments: 
+        args:
+            obs_t {np.array} -- [description]
+            info_t {dict} -- [description]
+            action {List of Player Action} -- [description]
+            reward {float} -- [description]
+            obs_tp1 {np.array} -- [description]
+            info_tp1 {dict} -- [description]
+            done {bool} -- [description]
         """
-        idxes = [random.randint(0, len(self._storage) - 1) for _ in range(batch_size)]
-        return self._encode_sample(idxes)
+        trans = Transition(
+            obs_t=Prerequisite(s_t, info_t),
+            action=joint_action,
+            reward=reward,
+            obs_tp1=Prerequisite(s_tp1, info_tp1)
+        )
+        if self._next_idx >= len(self._storage):
+            self._storage.append(trans)
+        else:
+            self._storage[self._next_idx] = trans
+        self._next_idx = (self._next_idx + 1) % self._maxsize
+    
+
 
 
 if __name__ == '__main__':
     replay_buffer = ReplayBuffer(size=4)
-
     pass
