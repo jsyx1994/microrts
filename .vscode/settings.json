@@ -1,5 +1,9 @@
 {
     "python.pythonPath": "venv/bin/python",
     "python.terminal.activateEnvironment": true,
-    "python.linting.enabled": true
+    "python.linting.enabled": true,
+    "autoDocstring.docstringFormat": "default",
+    "cSpell.words": [
+        "obses"
+    ]
 }

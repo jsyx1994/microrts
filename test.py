@@ -73,10 +73,12 @@ def self_play(nn_path=None):
             for i in range(len(players)):
                 # players[i].think(obses[i])
                 # print(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
-                actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info)[0])
+                actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info))
+                # input()
+                print(actions)
                 # input()
                 # actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
-            obses_tp1 = env.step(actions)
+            obses_tp1 = env.step()
             # memory.push(
             #     s_t=observation,
             #     info_t=

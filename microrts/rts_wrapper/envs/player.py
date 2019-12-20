@@ -1,19 +1,21 @@
 import socket
 from microrts.algo.utils import load_model
-from .utils import signal_wrapper, network_action_translator, pa_to_jsonable, action_sampler_v1
+from .utils import signal_wrapper, network_action_translator, pa_to_jsonable, action_sampler_v1, get_action_index
 
 
 class Player(object):
-    """Part of gym Environment
+    """Part of the gym environment, need to handle issues with java end interaction
     """
     conn = None
     type = None
     port = None
     brain = None
-    client_ip = None
+    _client_ip = None
     id = None
+    
+    memory = None
 
-    action = []
+    player_actions = None
 
     def __str__(self):
         pass
@@ -21,7 +23,7 @@ class Player(object):
     def __init__(self, pid, client_ip, port):
         self.id = pid
         self.port = port
-        self.client_ip = client_ip
+        self._client_ip = client_ip
 
     # def load_brain(self, **kwargs):
     #     pass
@@ -37,7 +39,7 @@ class Player(object):
         hand shake with java end
         """
         server_socket = socket.socket()
-        server_socket.bind((self.client_ip, self.port))
+        server_socket.bind((self._client_ip, self.port))
         server_socket.listen(5)
         print("Player{} Wait for Java client connection...".format(self.id))
         self.conn, address_info = server_socket.accept()
@@ -61,22 +63,27 @@ class Player(object):
         
         Arguments:
             kwargs:
-                model
                 obs
                 info
-        Raises:
-            NotImplementedError: [description]
+        Returns:
+            [(Unit, int)] -- list of NETWORK unit actions    
         """
         assert self.brain is not None
+        # self.player_actions.clear()
         obs = kwargs["obs"]
         info = kwargs["info"]
-        return action_sampler_v1(self.brain, obs, info)
+        self.player_actions = action_sampler_v1(self.brain, obs, info)
 
-    def act(self, action):
+        network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in self.player_actions]
+        return network_unit_actions
+        # return action_sampler_v1(self.brain, obs, info)
+
+    def act(self):
         """
         do some action in the env together with other players
         """
-        action = network_action_translator(action)
+        assert self.player_actions is not None
+        action = network_action_translator(self.player_actions)
         pa = pa_to_jsonable(action)
         self._send_msg(pa)
 
@@ -88,13 +95,18 @@ class Player(object):
         return signal_wrapper(raw)
 
     def expect(self):
+        """Expecting and waiting for the msg from environment
+        
+        Returns:
+            str -- the msg received from remote
+        """
         return self._recv_msg()
 
     def _send_msg(self, msg: str):
         try:
             self.conn.send(('%s\n' % msg).encode('utf-8'))
         except Exception as err:
-            print("An error has occured: ", err)
+            print("An error has occurred: ", err)
         # return self.conn.recv(65536).decode('utf-8')
 
     def _recv_msg(self):

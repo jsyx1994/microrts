@@ -14,7 +14,7 @@ rd = np.random
 rd.seed()
 
 
-def action_sampler_v1(model, state, info, mode='stochastic'):
+def action_sampler_v1(model, state, info, mode='stochastic', callback=None):
     """Sample actions from one game state for all units player i owns
     
     Arguments:
@@ -23,13 +23,18 @@ def action_sampler_v1(model, state, info, mode='stochastic'):
         info {[type]} -- [description]
     
     Keyword Arguments:
+        model {[type]} -- [description]
+        state {[type]} -- [description]
+        info {[type]} -- [description] 
         mode {str} -- [description] (default: {'stochastic'})
+        callback {[type]} -- [description] (default: {None})
     
     Returns:
         tuple(list, list) -- 
         1. list of (unit valid actions, sampled action) for all units player i owns,unit valid actions are used for action translating
         2. list of (unit, sampled action) for all units player i owns. Use it to be stored in buffer while training
     """
+
     assert mode in ['stochastic', 'deterministic']
     time_stamp = info["time_stamp"]
     # if time_stamp % 1 != 0:
@@ -41,7 +46,7 @@ def action_sampler_v1(model, state, info, mode='stochastic'):
 
     spatial_feature = torch.from_numpy(state).float().unsqueeze(0)
     samples = []
-    uas = []
+    # uas = []
     for uva in unit_valid_actions:
         u  = uva.unit
         unit_feature = torch.from_numpy(unit_feature_encoder(u, height, width)).float().unsqueeze(0)
@@ -54,10 +59,10 @@ def action_sampler_v1(model, state, info, mode='stochastic'):
             sampled_unit_action = model.deterministic_action_sampler(u.type, spatial_feature, unit_feature)
 
         samples.append((uva, sampled_unit_action))
-        uas.append((u, sampled_unit_action))
-    print(samples)
-    input()
-    return samples, uas
+        # uas.append((u, sampled_unit_action))
+    # print(samples)
+    # input()
+    return samples
 
 
 def get_available_port():
@@ -73,6 +78,14 @@ def normalize(value, max_v, min_v):
 
 
 def get_action_index(enum_action):
+    """Get the index of the Enum Action from microrts.rts_wrapper.envs.datatypes to figure out the network action
+    
+    Arguments:
+        enum_action {} -- A member of derived Enum class
+    
+    Returns:
+        int -- network action ecoding
+    """
     return list(enum_action.__class__).index(enum_action)
 
 
@@ -130,7 +143,7 @@ def network_simulator(unit_valid_actions: List[UnitValidAction]):
         choice = rd.choice(list(AGENT_ACTIONS_MAP[uva.unit.type]))
         # (choice) BaseAction.DO_NONE.name, BaseAction.DO_NONE.value
         unit_validaction_choices.append((uva, choice))
-    return network_action_translator(unit_validaction_choices)
+    return unit_validaction_choices
 
 
 def extract_record(gs: GameState, sl_target: int) -> Record:
@@ -169,6 +182,15 @@ def extract_record(gs: GameState, sl_target: int) -> Record:
 
 
 def state_encoder(gs: GameState, player):
+    """Encode the state for player given Game state from java
+    
+    Arguments:
+        gs {GameState} -- Game state from java
+        player {int} -- current player
+    
+    Returns:
+        np.array -- features
+    """
     current_player = player
     # AGENT_COLLECTION
     pgs = gs.pgs
@@ -293,11 +315,11 @@ def utt_encoder(utt_str: str):
         else:
             is_resource[1] = 1
 
-        is_stockplie = np.zeros(2)
+        is_stockpile = np.zeros(2)
         if not ut.isStockpile:
-            is_stockplie[0] = 1
+            is_stockpile[0] = 1
         else:
-            is_stockplie[1] = 1
+            is_stockpile[1] = 1
 
         can_harvest = np.zeros(2)
         if not ut.canHarvest:
@@ -332,7 +354,7 @@ def utt_encoder(utt_str: str):
              harvest_amount,  # 1
              sight_radius,  # 1
              is_resource,  # 2
-             is_stockplie,  # 2
+             is_stockpile,  # 2
              can_harvest,  # 2
              can_move,  # 2
              can_attack,  # 2

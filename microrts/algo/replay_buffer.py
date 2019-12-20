@@ -2,7 +2,7 @@ import numpy as np
 import random
 from dataclasses import dataclass
 from collections import namedtuple
-from microrts.rts_wrapper.envs.datatypes import GameState, List, PlayerAction
+from microrts.rts_wrapper.envs.datatypes import GameState, List, PlayerAction, Any
 
 @dataclass
 class Prerequisite:
@@ -11,10 +11,11 @@ class Prerequisite:
 
 @dataclass
 class Transition:
-    obs_t   : Prerequisite
-    joint_action  : List[PlayerAction]
+    obs_t   : np.array
+    action  : List[Any] # list of (Unit, network_action(int) )
     reward  : float
-    obs_tp1 : Prerequisite
+    obs_tp1 : np.array
+    done    : bool 
 
 class ReplayBuffer(object):
     def __init__(self, size, frame_history_len=1):
@@ -24,7 +25,7 @@ class ReplayBuffer(object):
             overflows the old memories are dropped.
         
         Keyword Arguments:
-            frame_history_len {int} -- Num of frames taken for trainning input (default: {1})
+            frame_history_len {int} -- Num of frames taken for training input (default: {1})
         """
 
         self._storage = []
@@ -40,25 +41,20 @@ class ReplayBuffer(object):
         """
         return len(self._storage)
 
-    def push(self, s_t, info_t, joint_action, reward, s_tp1, info_tp1, done):
+    def push(self, **kwargs):
         """Saves a transition
         
         Arguments: 
         args:
             obs_t {np.array} -- [description]
-            info_t {dict} -- [description]
+            # info_t {dict} -- [description]
             action {List of Player Action} -- [description]
             reward {float} -- [description]
             obs_tp1 {np.array} -- [description]
-            info_tp1 {dict} -- [description]
+            # info_tp1 {dict} -- [description]
             done {bool} -- [description]
         """
-        trans = Transition(
-            obs_t=Prerequisite(s_t, info_t),
-            action=joint_action,
-            reward=reward,
-            obs_tp1=Prerequisite(s_tp1, info_tp1)
-        )
+        trans = Transition(kwargs)
         if self._next_idx >= len(self._storage):
             self._storage.append(trans)
         else:

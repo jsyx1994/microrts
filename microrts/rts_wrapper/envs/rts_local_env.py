@@ -27,6 +27,7 @@ class BattleEnv(BaseEnv):
         self.DEBUG = False
         self._counting_players()
 
+
         if not self.DEBUG:
             Thread(target=self.start_client).start()
         self._players_join()
@@ -58,13 +59,13 @@ class BattleEnv(BaseEnv):
             )
 
     # TODO: get
-    def step(self, action: list):
+    def step(self):
         """
         local env should using Threads to avoid dead lock, while remote needn't
         """
         import time
         for i in range(self.players_num):
-            self.players[i].act(action[i])
+            self.players[i].act()
             # time.sleep(.1)
 
         signals_res = [self._obs2dataclass(player.observe()) for player in self.players]
@@ -104,6 +105,12 @@ def main():
 
     print(env.setup_commands)
 
+# res = []
+# def callback(result):
+#     res.append(result)
+
 
 if __name__ == '__main__':
-   main()
+    # p = ThreadPool(3)
+    # print(p.apply_async(func=sum, args=([12,3],)).get())
+    main()   
