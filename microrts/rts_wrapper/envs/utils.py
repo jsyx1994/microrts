@@ -13,7 +13,6 @@ import torch
 rd = np.random
 rd.seed()
 
-
 def action_sampler_v1(model, state, info, mode='stochastic', callback=None):
     """Sample actions from one game state for all units player i owns
     
@@ -40,7 +39,7 @@ def action_sampler_v1(model, state, info, mode='stochastic', callback=None):
     # if time_stamp % 1 != 0:
     #     return []
     unit_valid_actions = info["unit_valid_actions"]  # unit and its valid actions
-    height, width = info["map_size"]
+    map_size = info["map_size"]
     player_resources = info["player_resources"]  # global resource situation, default I'm player 0
     current_player = info["current_player"]
 
@@ -49,7 +48,7 @@ def action_sampler_v1(model, state, info, mode='stochastic', callback=None):
     # uas = []
     for uva in unit_valid_actions:
         u  = uva.unit
-        unit_feature = torch.from_numpy(unit_feature_encoder(u, height, width)).float().unsqueeze(0)
+        unit_feature = torch.from_numpy(unit_feature_encoder(u, map_size)).float().unsqueeze(0)
         encoded_utt = torch.from_numpy(encoded_utt_dict[u.type]).float().unsqueeze(0)
 
         unit_feature = torch.cat([unit_feature, encoded_utt], dim=1)
@@ -62,6 +61,8 @@ def action_sampler_v1(model, state, info, mode='stochastic', callback=None):
         # uas.append((u, sampled_unit_action))
     # print(samples)
     # input()
+    if callback:
+        callback(samples)
     return samples
 
 
@@ -101,7 +102,7 @@ def signal_wrapper(raw):
     """wrap useful signal from java raw
     
     Arguments:
-        raw {str} -- msg recieved from java
+        raw {str} -- msg received from java
     
     Returns: 
         tuple of --
@@ -112,6 +113,7 @@ def signal_wrapper(raw):
     """
     curr_player = int(raw.split('\n')[0].split()[1])
     gs_wrapper = from_dict(data_class=GsWrapper, data=json.loads(raw.split('\n')[1]))
+    # gs_wrapper = GsWrapper(**json.loads(raw.split('\n')[1]))
     # print(raw)
     # input()
     observation = state_encoder(gs_wrapper.gs, curr_player)
@@ -247,6 +249,7 @@ def utt_encoder(utt_str: str):
     min_value = -max_value
 
     utt = from_dict(data_class=UnitTypeTable, data=json.loads(utt_str))
+    # utt = UnitTypeTable(**json.loads(utt_str))
     name_id_dict = {}
 
     encoder_dict = {}
@@ -612,7 +615,8 @@ def resource_encoder(amount, feature_length=8, amount_threshold=2):
     return resource
 
 
-def unit_feature_encoder(unit:Unit, map_height, map_width):
+def unit_feature_encoder(unit:Unit, map_size:list):
+    map_height, map_width = map_size
     unit_type = unit.type
     unit_x = unit.x
     unit_y = unit.y

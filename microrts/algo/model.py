@@ -166,33 +166,6 @@ class ActorCritic(nn.Module):
 
 
 
-def test_network():
-    import json
-    unit_entity_str = '{"type":"Worker", "ID":22, "player":0, "x":0, "y":2, "resources":0, "hitpoints":1}'
-    pgs_wrapper_str = '{"reward":140.0,"done":false,"validActions":[{"unit":{"type":"Worker", "ID":22, "player":0, "x":0, "y":2, "resources":0, "hitpoints":1},"unitActions":[{"type":1, "parameter":1} ,{"type":1, "parameter":2} ,{"type":0, "parameter":10}]},{"unit":{"type":"Worker", "ID":24, "player":0, "x":3, "y":4, "resources":0, "hitpoints":1},"unitActions":[{"type":1, "parameter":0} ,{"type":1, "parameter":1} ,{"type":1, "parameter":2} ,{"type":1, "parameter":3} ,{"type":0, "parameter":10}]}],"gs":{"time":164,"pgs":{"width":6,"height":6,"terrain":"000000000000000000000000000000000000","players":[{"ID":0, "resources":2},{"ID":1, "resources":5}],"units":[{"type":"Resource", "ID":0, "player":-1, "x":0, "y":0, "resources":230, "hitpoints":1},{"type":"Base", "ID":19, "player":1, "x":5, "y":5, "resources":0, "hitpoints":10},{"type":"Base", "ID":20, "player":0, "x":2, "y":2, "resources":0, "hitpoints":10},{"type":"Worker", "ID":22, "player":0, "x":0, "y":2, "resources":0, "hitpoints":1},{"type":"Worker", "ID":23, "player":0, "x":5, "y":2, "resources":0, "hitpoints":1},{"type":"Worker", "ID":24, "player":0, "x":3, "y":4, "resources":0, "hitpoints":1},{"type":"Worker", "ID":25, "player":0, "x":0, "y":1, "resources":0, "hitpoints":1},{"type":"Worker", "ID":26, "player":0, "x":2, "y":3, "resources":0, "hitpoints":1}]},"actions":[{"ID":20, "time":153, "action":{"type":4, "parameter":1, "unitType":"Worker"}},{"ID":26, "time":158, "action":{"type":1, "parameter":3}},{"ID":19, "time":160, "action":{"type":0, "parameter":10}},{"ID":25, "time":162, "action":{"type":2, "parameter":0}},{"ID":23, "time":163, "action":{"type":1, "parameter":2}}]}}'
-    unit = from_dict(data_class=Unit, data=json.loads(unit_entity_str))
-    gs_wrapper = from_dict(data_class=GsWrapper, data=json.loads(pgs_wrapper_str))
-
-    scalar_feature_actor = np.array([p.resources for p in gs_wrapper.gs.pgs.players])
-    rsrc1, rsrc2 = scalar_feature_actor
-    scalar_feature_critic = np.array([0.5 if rsrc1 == rsrc2 else (rsrc1 - rsrc2) / (rsrc1 + rsrc2)])
-    unit_feature = unit_feature_encoder(unit, gs_wrapper.gs.pgs.height, gs_wrapper.gs.pgs.width)
-
-    # print(scalar_feature)
-
-    cnnbase = CNNBase(6, 6, 19)
-    input_data = torch.randn(1, 19, 6, 6)
-
-    critic = Critic(cnnbase)
-
-    base_out = cnnbase(input_data, torch.from_numpy(scalar_feature_critic).unsqueeze(0).float())
-
-    actor = Actor(base_out.size(1))
-    print(actor("Worker", base_out, unit_feature, scalar_feature_actor))
-    # print(actor)
-    # print(actor(base_out,))
-    # actor = Actor()np.ndarray
-    # print(actor)
 
 
 if __name__ == '__main__':

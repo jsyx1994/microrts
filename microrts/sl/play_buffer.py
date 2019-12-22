@@ -37,7 +37,7 @@ class PlayBuffer(object):
             # if action.type == 5:
             #     input()
             states.append(state_encoder(gs=state, player=t_player))
-            units.append(unit_feature_encoder(unit, state.pgs.height, state.pgs.width))
+            units.append(unit_feature_encoder(unit, (state.pgs.height, state.pgs.width)))
             actions.append(game_action_translator(unit, action))
             unit_types.append(unit.type)
 

@@ -44,6 +44,7 @@ def parse_gs(gs):
     :return:
     """
     st = time.time()
+
     gs = json.loads(json.dumps(gs))
 
     gs = fix_keys(gs)
@@ -98,9 +99,10 @@ def parse_gs(gs):
 
     # TODO: this costs a lot time!
     ans = from_dict(data_class=GameState, data=gs)
+    # ans = GameState(**gs)
     # print(odict)
 
-    # print(time.time()  - st)
+    print(time.time()  - st)
     return ans
 
 

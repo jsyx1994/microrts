@@ -1,0 +1,23 @@
+
+# new name added here
+
+UNIT_TYPE_NAME_BASE = 'Base'
+UNIT_TYPE_NAME_BARRACKS = 'Barracks'
+UNIT_TYPE_NAME_WORKER = 'Worker'
+UNIT_TYPE_NAME_LIGHT = 'Light'
+UNIT_TYPE_NAME_HEAVY = 'Heavy'
+UNIT_TYPE_NAME_RANGED = 'Ranged'
+UNIT_TYPE_NAME_RESOURCE = 'Resource'
+
+
+AGENT_COLLECTION = [
+    UNIT_TYPE_NAME_BASE,
+    UNIT_TYPE_NAME_BARRACKS,
+    UNIT_TYPE_NAME_WORKER,
+    UNIT_TYPE_NAME_LIGHT,
+    UNIT_TYPE_NAME_HEAVY, UNIT_TYPE_NAME_RANGED,
+    ]
+
+
+# unit collection is used in the real state encoding
+UNIT_COLLECTION = AGENT_COLLECTION + ['Resource']

@@ -66,6 +66,8 @@ def self_play(nn_path=None):
     for p in players:
         p.load_brain(nn)
     
+    
+    
     for _ in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset
         while not obses_t[0].done:
@@ -75,15 +77,82 @@ def self_play(nn_path=None):
                 # print(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
                 actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info))
                 # input()
-                print(actions)
+                # print(actions)
                 # input()
                 # actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
             obses_tp1 = env.step()
-            # memory.push(
-            #     s_t=observation,
-            #     info_t=
-            # )
-            # print(obses)
+            # print(obses_tp1[0].reward)
+
+
+            memory.refresh()
+            for i in range(len(players)):
+                if actions[i]:
+                    memory.push(
+                        obs_t=obses_t[i].observation,
+                        action=actions[i],
+                        obs_tp1=obses_tp1[i].observation,
+                        reward=obses_tp1[i].reward,
+                        done=obses_tp1[i].done
+                    )
+            sps_dict = memory.sample(batch_size="all")
+            for key in sps_dict:
+                if key not in nn.activated_agents:
+                    continue
+
+                if sps_dict[key]:
+                    # print(sps_dict[key].to("cpu"))
+                    # print(sps_dict[key].rewards)
+
+                    # states : np.array
+                    # units: np.array
+                    # actions: np.array
+                    # next_states: np.array
+                    # rewards: np.array
+                    # done_masks: np.array
+                    states, units, actions, next_states, rewards,  done_masks = sps_dict[key].__dict__.values()
+
+                    states = torch.from_numpy(states).float()
+                    units = torch.from_numpy(units).float()
+                    actions = torch.from_numpy(actions).long().unsqueeze(1)
+                    next_states = torch.from_numpy(next_states).float()
+                    rewards = torch.from_numpy(rewards).float().unsqueeze(1)
+                    done_masks=torch.from_numpy(done_masks).bool().unsqueeze(1)
+
+                    value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
+
+                    value_next = nn.critic_forward(next_states)
+                    
+                    # torch.gather()
+                    print(value)
+                    pi_sa = probs.gather(1, actions)
+
+                    policy_loss = - torch.log(pi_sa + 1e-7) * (rewards + value_next - value)
+                    value_loss = torch.nn.functional.mse_loss(rewards + value_next, value)
+
+                    # print(policy_loss.size())
+                    all_loss = policy_loss.mean() + value_loss.mean()
+
+                    optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-4,weight_decay=1e-5)
+
+                    optimizer.zero_grad()
+                    all_loss.backward()
+                    optimizer.step()
+
+                    # pi_sa = torch.gather(probs, 1, actions.unsqueeze(1))
+                    # pi_sa = probs.gather(1,actions.unsqueeze(0))
+
+                    # print(states)
+                    # input() 
+
+            # input()
+
+
+
+
+
+
+
+            obses_t = obses_tp1
         winner = env.get_winner()
         print(winner)
 

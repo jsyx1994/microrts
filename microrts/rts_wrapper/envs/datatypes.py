@@ -19,6 +19,7 @@ ACTION_PARAMETER_DIRECTION_DOWN = 2
 ACTION_PARAMETER_DIRECTION_LEFT = 3
 ACTION_PARAMETER_VALID_DIRECTION_NUMS = 4
 
+# TODO: the following will be removed
 UNIT_TYPE_NAME_BASE = 'Base'
 UNIT_TYPE_NAME_BARRACKS = 'Barracks'
 UNIT_TYPE_NAME_WORKER = 'Worker'
@@ -251,6 +252,8 @@ class Config:
     period: Optional[int] = 5
     render: Optional[int] = 1
     utt: Optional[dict] = from_dict(data_class=UnitTypeTable, data=json.loads(UTT_ORI))
+    # utt: Optional[dict] = UnitTypeTable(**json.loads(UTT_ORI))
+
     microrts_path: Optional[str] = settings.microrts_path
     microrts_repo_path: Optional[str] = ""
     client_ip: Optional[str] = settings.client_ip
