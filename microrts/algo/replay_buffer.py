@@ -16,7 +16,7 @@ class Transition:
     action  : List[Any] # list of (Unit, int(network_action) )
     obs_tp1 : np.array
     reward  : float
-    done    : bool 
+    done    : bool
 
 @dataclass
 class Batches:
@@ -26,6 +26,14 @@ class Batches:
     next_states: np.array
     rewards: np.array
     done_masks: np.array
+    def to(self,device):
+        return  torch.from_numpy(self.states).float().to(device), \
+                torch.from_numpy(self.units).float().to(device), \
+                torch.from_numpy(self.actions).long().to(device).unsqueeze(1), \
+                torch.from_numpy(self.next_states).float().to(device), \
+                torch.from_numpy(self.rewards).float().to(device).unsqueeze(1), \
+                torch.from_numpy(self.done_masks).bool().to(device).unsqueeze(1)
+
 
 class ReplayBuffer(object):
     def __init__(self, size, frame_history_len=1):

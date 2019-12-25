@@ -13,7 +13,7 @@ import torch
 rd = np.random
 rd.seed()
 
-def action_sampler_v1(model, state, info, mode='stochastic', callback=None):
+def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callback=None):
     """Sample actions from one game state for all units player i owns
     
     Arguments:
@@ -43,13 +43,13 @@ def action_sampler_v1(model, state, info, mode='stochastic', callback=None):
     player_resources = info["player_resources"]  # global resource situation, default I'm player 0
     current_player = info["current_player"]
 
-    spatial_feature = torch.from_numpy(state).float().unsqueeze(0)
+    spatial_feature = torch.from_numpy(state).float().unsqueeze(0).to(device)
     samples = []
     # uas = []
     for uva in unit_valid_actions:
         u  = uva.unit
-        unit_feature = torch.from_numpy(unit_feature_encoder(u, map_size)).float().unsqueeze(0)
-        encoded_utt = torch.from_numpy(encoded_utt_dict[u.type]).float().unsqueeze(0)
+        unit_feature = torch.from_numpy(unit_feature_encoder(u, map_size)).float().unsqueeze(0).to(device)
+        encoded_utt = torch.from_numpy(encoded_utt_dict[u.type]).float().unsqueeze(0).to(device)
 
         unit_feature = torch.cat([unit_feature, encoded_utt], dim=1)
         if mode == 'stochastic':
@@ -127,7 +127,7 @@ def signal_wrapper(raw):
         "current_player": curr_player,
         "player_resources": [p.resources for p in gs_wrapper.gs.pgs.players],
         "map_size": [gs_wrapper.gs.pgs.height, gs_wrapper.gs.pgs.width],
-        "time_stamp": gs_wrapper.gs.time,
+        "time_stamp": int(gs_wrapper.gs.time),
     }
     return observation, reward, done, info
 

@@ -49,8 +49,8 @@ def self_play(nn_path=None):
         map_size {tuple} -- (height, width)
     """     
 
-    env = gym.make("CurriculumBaseWorker-v0")
-    assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
+    env = gym.make("attackHome-v0")
+    # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
     memory = ReplayBuffer(10000)
 
     start_from_scratch = nn_path is None
@@ -62,105 +62,115 @@ def self_play(nn_path=None):
     else:
         nn = load_model(nn_path, env.map_size)
 
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    # device = "cpu"
+    nn.to(device)
+    from torch.utils.tensorboard import SummaryWriter
+    import time
+    writer = SummaryWriter()
+
+
 
     for p in players:
         p.load_brain(nn)
     
     
-    
-    for _ in range(env.max_episodes):
+
+    iter_idx = 0
+    for epi_idx in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset
+        start_time = time.time()
         while not obses_t[0].done:
             actions = []
             for i in range(len(players)):
                 # players[i].think(obses[i])
                 # print(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
-                actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info))
+                actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
                 # input()
                 # print(actions)
                 # input()
                 # actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
             obses_tp1 = env.step()
             # print(obses_tp1[0].reward)
+            if obses_tp1[0].reward > 0:
+                print(obses_tp1[i].reward)
+
+
+
+
 
 
             memory.refresh()
+            optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-7)
+            iter_idx += 1
             for i in range(len(players)):
+
                 if actions[i]:
                     memory.push(
                         obs_t=obses_t[i].observation,
+
                         action=actions[i],
                         obs_tp1=obses_tp1[i].observation,
                         reward=obses_tp1[i].reward,
                         done=obses_tp1[i].done
                     )
+
             sps_dict = memory.sample(batch_size="all")
             for key in sps_dict:
                 if key not in nn.activated_agents:
                     continue
 
                 if sps_dict[key]:
-                    # print(sps_dict[key].to("cpu"))
-                    # print(sps_dict[key].rewards)
+                    states, units, actions, next_states, rewards,  done_masks = sps_dict[key].to(device)
 
-                    # states : np.array
-                    # units: np.array
-                    # actions: np.array
-                    # next_states: np.array
-                    # rewards: np.array
-                    # done_masks: np.array
-                    states, units, actions, next_states, rewards,  done_masks = sps_dict[key].__dict__.values()
-
-                    states = torch.from_numpy(states).float()
-                    units = torch.from_numpy(units).float()
-                    actions = torch.from_numpy(actions).long().unsqueeze(1)
-                    next_states = torch.from_numpy(next_states).float()
-                    rewards = torch.from_numpy(rewards).float().unsqueeze(1)
-                    done_masks=torch.from_numpy(done_masks).bool().unsqueeze(1)
 
                     value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
 
                     value_next = nn.critic_forward(next_states)
                     
-                    # torch.gather()
-                    print(value)
+                    #direction test
+                    # _rewards = []
+                    # for d in actions:
+                    #     if d[0] == 1:
+                    #         _rewards.append(1)
+                    #     else:
+                    #         _rewards.append(-1)
+                    # _rewards = torch.FloatTensor(_rewards).unsqueeze(1).to(device)
+                    # print(rewards[0][0])
+                    if rewards[0][0] > 0:
+                        print(rewards)
                     pi_sa = probs.gather(1, actions)
-
+                    entropy_loss = - probs * torch.log(probs)
                     policy_loss = - torch.log(pi_sa + 1e-7) * (rewards + value_next - value)
                     value_loss = torch.nn.functional.mse_loss(rewards + value_next, value)
 
-                    # print(policy_loss.size())
-                    all_loss = policy_loss.mean() + value_loss.mean()
-
-                    optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-4,weight_decay=1e-5)
+                    all_loss = policy_loss.mean() + value_loss.mean() # + .01 * entropy_loss.sum()
+                    
+                    if iter_idx % 100 == 0:
+                        writer.add_scalar("p_loss", policy_loss.mean(), iter_idx)
+                        writer.add_scalar("v_loss", value_loss.mean(), iter_idx)
+                        writer.add_scalar("all_loss", all_loss, iter_idx)
 
                     optimizer.zero_grad()
                     all_loss.backward()
                     optimizer.step()
-
-                    # pi_sa = torch.gather(probs, 1, actions.unsqueeze(1))
-                    # pi_sa = probs.gather(1,actions.unsqueeze(0))
-
-                    # print(states)
-                    # input() 
-
-            # input()
-
-
-
-
-
+            
 
 
             obses_t = obses_tp1
         winner = env.get_winner()
-        print(winner)
-
+        writer.add_scalar("TimeStamp",obses_t[i].info["time_stamp"], epi_idx)
+        print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
+        
     print(env.setup_commands)
+    torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl.pth"))
 
 
 
 if __name__ == '__main__':
+    from microrts.settings import models_dir
+    import os
+    # self_play(nn_path=os.path.join(models_dir, "rl.pth"))
     self_play()
     # evaluate()
 # print(rts_wrapper.base_dir_path)

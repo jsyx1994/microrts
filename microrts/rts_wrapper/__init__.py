@@ -1,7 +1,7 @@
 from gym.envs.registration import register
 import os
 from .envs.datatypes import Config
-# from .envs import B
+import microrts.settings as settings
 
 base_dir_path = os.path.dirname(os.path.realpath(__file__))
 # print(base_dir_path)
@@ -21,6 +21,52 @@ Attributes:
 """
 
 register(
+    id='SingleAgent-v0',
+    entry_point='microrts.rts_wrapper.envs:BattleEnv',
+    kwargs={'config': Config(
+        ai1_type='socketAI',
+        ai2_type='Passive',
+        map_path=os.path.join(base_dir_path, 'maps/6x6/attackHome6x6.xml'),
+        height=6,
+        width=6,
+        render=0,
+        max_cycles=1000,
+        max_episodes=1000,
+
+    )}
+)
+
+register(
+    id='attackHome-v0',
+    entry_point='microrts.rts_wrapper.envs:BattleEnv',
+    kwargs={'config': Config(
+        ai1_type='socketAI',
+        ai2_type='Passive',
+        map_path=os.path.join(base_dir_path, 'maps/4x4/attackHome4x4.xml'),
+        height=4,
+        width=4,
+        render=0,
+        max_cycles=1000,
+        max_episodes=1000,
+    )}
+)
+
+register(
+    id='attackHome-v1',
+    entry_point='microrts.rts_wrapper.envs:BattleEnv',
+    kwargs={'config': Config(
+        ai1_type='socketAI',
+        ai2_type='Passive',
+        map_path=os.path.join(base_dir_path, 'maps/6x6/attackHome6x6.xml'),
+        height=6,
+        width=6,
+        render=0,
+        max_cycles=1000,
+        max_episodes=10000,
+    )}
+)
+
+register(
     id='CurriculumBaseWorker-v0',
     entry_point='microrts.rts_wrapper.envs:BattleEnv',
     kwargs={'config': Config(
@@ -31,7 +77,7 @@ register(
         width=6,
         render=1,
         max_cycles=3000,
-        max_episodes=10000,
+        max_episodes=1000,
 
     )}
 )

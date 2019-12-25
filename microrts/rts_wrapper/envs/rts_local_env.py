@@ -84,7 +84,8 @@ class BattleEnv(BaseEnv):
         :return:
         """
         for p in self.players:
-            p.expect()
+            res = p.expect()
+        return res
 
 
 def main():

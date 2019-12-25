@@ -12,6 +12,7 @@ class Player(object):
     brain = None
     _client_ip = None
     id = None
+    last_actions = None
     
     memory = None
 
@@ -60,11 +61,8 @@ class Player(object):
 
     def think(self, **kwargs):
         """figure out the action according to helper function and obs
-        
         Arguments:
-            kwargs:
-                obs
-                info
+            kwargs: obs, info, accelerator
         Returns:
             [(Unit, int)] -- list of NETWORK unit actions    
         """
@@ -72,9 +70,17 @@ class Player(object):
         # self.player_actions.clear()
         obs = kwargs["obs"]
         info = kwargs["info"]
-        self.player_actions = action_sampler_v1(self.brain, obs, info)
+        if "accelerator" in kwargs:
+            device = kwargs["accelerator"]
+        else:
+            device = 'cpu'
+
+        self.player_actions = action_sampler_v1(self.brain, obs, info, device=device)
 
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in self.player_actions]
+        # if not network_unit_actions:
+        #     network_unit_actions = self.last_actions
+        # self.last_actions = network_unit_actions
         return network_unit_actions
         # return action_sampler_v1(self.brain, obs, info)
 
