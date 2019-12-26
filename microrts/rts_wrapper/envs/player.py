@@ -1,7 +1,8 @@
 import socket
 from microrts.algo.utils import load_model
 from .utils import signal_wrapper, network_action_translator, pa_to_jsonable, action_sampler_v1, get_action_index
-
+from microrts.algo.replay_buffer import ReplayBuffer
+# import microrts.algo.replay_buffer as rb
 
 class Player(object):
     """Part of the gym environment, need to handle issues with java end interaction
@@ -9,31 +10,60 @@ class Player(object):
     conn = None
     type = None
     port = None
-    brain = None
     _client_ip = None
     id = None
-    last_actions = None
-    
-    memory = None
 
-    player_actions = None
+
+    # very long memory
+    brain = None
+
+    # long memory
+    _memory = None
+
+    # short memories
+    last_actions = None
+    units_on_working = {}
+    player_actions = None   # used to interact with env
 
     def __str__(self):
         pass
 
-    def __init__(self, pid, client_ip, port):
+    def __repr__(self):
+        pass
+
+    def __init__(self, pid, client_ip, port, memory_size=10000):
         self.id = pid
         self.port = port
         self._client_ip = client_ip
 
-    # def load_brain(self, **kwargs):
-    #     pass
-
-    # def load_brain(self, nn_path, height, width):
-    #     self.brain = load_model(nn_path, height, width)
+        self._memory = ReplayBuffer(memory_size)
+    
+    def forget(self):
+        """Forget what short memories stored, remain the long and very long 's
+        """
+        self.last_actions = None
+        self.units_on_working.clear()
+        self.player_actions = None
 
     def load_brain(self, nn):
         self.brain = nn
+    
+    def _memorize(self, obs_t, action, obs_tp1, reward, done):
+        assert self._memory is not None
+        self._memory.push(
+            obs_t=obs_t,
+            action=action,
+            obs_tp1=obs_tp1,
+            reward=reward,
+            done=done,
+            )
+        if reward > 0:
+            print(action)
+
+    
+    def learn(self, algo=None):
+        assert algo is not None
+        raise NotImplementedError
 
     def join(self):
         """
@@ -60,28 +90,61 @@ class Player(object):
         return signal_wrapper(raw)
 
     def think(self, **kwargs):
-        """figure out the action according to helper function and obs
+        """figure out the action according to helper function and obs, store env related action to itself and \
+            nn related result to Replay Buffer. More
         Arguments:
-            kwargs: obs, info, accelerator
+            kwargs: 
+                obses {dataclass} -- observation: Any,  reward: float , done: bool, info: Dict
+                accelerator {str} -- device to load torch tensors
+                mode {str} -- "train" or "eval", if "train" is present, then transitions should be sampled
         Returns:
             [(Unit, int)] -- list of NETWORK unit actions    
         """
         assert self.brain is not None
         # self.player_actions.clear()
-        obs = kwargs["obs"]
-        info = kwargs["info"]
+        obses = kwargs["obses"]
+
+        obs     = obses.observation
+        info    = obses.info
+        reward  = obses.reward
+        done    = obses.done
+
         if "accelerator" in kwargs:
             device = kwargs["accelerator"]
         else:
-            device = 'cpu'
+            device = "cpu"
+        
+        if "mode" in kwargs:
+            mode = kwargs["mode"]
+        else:
+            mode = "eval"
+        
+        del kwargs
 
         self.player_actions = action_sampler_v1(self.brain, obs, info, device=device)
 
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in self.player_actions]
+
+        if mode == "train":
+            # sample the transition in a correct way
+            for u, a in network_unit_actions:
+                _id = str(u.ID)
+                if _id in self.units_on_working:
+                    self._memorize(
+                        obs_t=self.units_on_working[_id][0],
+                        action=self.units_on_working[_id][1],
+                        obs_tp1=obs,
+                        reward=reward,
+                        done=done,
+                    )
+                
+                self.units_on_working[str(u.ID)] = (obs, a)
+            
+
         # if not network_unit_actions:
         #     network_unit_actions = self.last_actions
         # self.last_actions = network_unit_actions
-        return network_unit_actions
+        # return network_unit_actions
         # return action_sampler_v1(self.brain, obs, info)
 
     def act(self):
@@ -98,6 +161,7 @@ class Player(object):
         observe the feedback from the env
         """
         raw = self._recv_msg()
+        # print(raw)
         return signal_wrapper(raw)
 
     def expect(self):

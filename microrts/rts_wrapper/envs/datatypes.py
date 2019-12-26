@@ -63,7 +63,7 @@ UTT_ORI = '{"moveConflictResolutionStrategy":3,"unitTypes":[{"ID":0, "name":"Res
           '"Barracks"]}, {"ID":6, "name":"Ranged", "cost":2, "hp":1, "minDamage":1, "maxDamage":1, "attackRange":3, ' \
           '"produceTime":100, "moveTime":10, "attackTime":5, "harvestTime":10, "returnTime":10, "harvestAmount":1, ' \
           '"sightRadius":3, "isResource":false, "isStockpile":false, "canHarvest":false, "canMove":true, ' \
-          '"canAttack":true, "produces":[], "producedBy":["Barracks"]}]} '
+          '"canAttack":true, "produces":[], "producedBy":["Barracks"]}]}'
 
 
 class BaseAction(Enum):
@@ -314,4 +314,4 @@ for t in from_dict(data_class=UnitTypeTable, data=json.loads(UTT_ORI)).unitTypes
 # print(UTT_DICT)
 
 if __name__ == '__main__':
-    print(list(LightAction.DO_NONE.__class__))
+    print(UTT_DICT)

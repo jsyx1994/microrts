@@ -72,7 +72,16 @@ class BattleEnv(BaseEnv):
         return signals_res
 
     def reset(self, **kwargs):
+        """Connect to the environment by handshakes, and refresh the players' short memories
+        
+        Returns:
+            [type] -- [description]
+        """
         signals = [self._obs2dataclass(player.reset()) for player in self.players]
+        
+        for p in self.players:
+            p.forget()
+            
         return signals
 
     def get_winner(self):

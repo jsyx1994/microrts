@@ -1,5 +1,4 @@
 import gym
-import microrts.rts_wrapper
 import os
 from microrts.rts_wrapper.envs.datatypes import List, Any
 from microrts.rts_wrapper.envs.utils import unit_feature_encoder,network_action_translator, encoded_utt_dict, network_simulator
@@ -16,6 +15,7 @@ from microrts.algo.replay_buffer import ReplayBuffer
 
 
 def evaluate():
+    """deprecated"""
     env = gym.make("EvalAgainstRandom-v0")
     players = env.players
     assert env.player1 is not None, "player No.1 can not be missed"
@@ -30,7 +30,7 @@ def evaluate():
             for i in range(len(players)):
                 # players[i].think(obses[i])
                 # print(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
-                actions.append(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
+                actions.append(players[i].think(obs=obses[i].observation, info=obses[i].info))
                 # input()
                 # actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
             obses = env.step(actions)
@@ -81,19 +81,13 @@ def self_play(nn_path=None):
         obses_t = env.reset()  # p1 and p2 reset
         start_time = time.time()
         while not obses_t[0].done:
-            actions = []
+            # actions = []
             for i in range(len(players)):
-                # players[i].think(obses[i])
-                # print(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
-                actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
-                # input()
-                # print(actions)
-                # input()
-                # actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
+                # actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
+                players[i].think(obses=obses_t[i], accelerator=device, mode="train")
             obses_tp1 = env.step()
-            # print(obses_tp1[0].reward)
             if obses_tp1[0].reward > 0:
-                print(obses_tp1[i].reward)
+                print(obses_tp1[0].reward)
 
 
 
@@ -103,60 +97,56 @@ def self_play(nn_path=None):
             memory.refresh()
             optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-7)
             iter_idx += 1
-            for i in range(len(players)):
+            # for i in range(len(players)):
+                # players[i].memorize(
+                #     obs_t=obses_t[i].observation,
+                #     action=actions[i],
+                #     obs_tp1=obses_tp1[i].observation,
+                #     reward=obses_tp1[i].reward,
+                #     done=obses_tp1[i].done
+                #     )
 
-                if actions[i]:
-                    memory.push(
-                        obs_t=obses_t[i].observation,
+                # if actions[i]:
+                #     memory.push(
+                        # obs_t=obses_t[i].observation,
 
-                        action=actions[i],
-                        obs_tp1=obses_tp1[i].observation,
-                        reward=obses_tp1[i].reward,
-                        done=obses_tp1[i].done
-                    )
+                        # action=actions[i],
+                        # obs_tp1=obses_tp1[i].observation,
+                        # reward=obses_tp1[i].reward,
+                        # done=obses_tp1[i].done
+                #     )
 
-            sps_dict = memory.sample(batch_size="all")
-            for key in sps_dict:
-                if key not in nn.activated_agents:
-                    continue
+            # sps_dict = memory.sample(batch_size="all")
+            # for key in sps_dict:
+            #     if key not in nn.activated_agents:
+            #         continue
 
-                if sps_dict[key]:
-                    states, units, actions, next_states, rewards,  done_masks = sps_dict[key].to(device)
+            #     if sps_dict[key]:
+            #         states, units, actions, next_states, rewards,  done_masks = sps_dict[key].to(device)
 
 
-                    value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
+            #         value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
 
-                    value_next = nn.critic_forward(next_states)
+            #         value_next = nn.critic_forward(next_states)
                     
-                    #direction test
-                    # _rewards = []
-                    # for d in actions:
-                    #     if d[0] == 1:
-                    #         _rewards.append(1)
-                    #     else:
-                    #         _rewards.append(-1)
-                    # _rewards = torch.FloatTensor(_rewards).unsqueeze(1).to(device)
-                    # print(rewards[0][0])
-                    if rewards[0][0] > 0:
-                        print(rewards)
-                    pi_sa = probs.gather(1, actions)
-                    entropy_loss = - probs * torch.log(probs)
-                    policy_loss = - torch.log(pi_sa + 1e-7) * (rewards + value_next - value)
-                    value_loss = torch.nn.functional.mse_loss(rewards + value_next, value)
+            #         if rewards[0][0] > 0:
+            #             print(rewards)
+            #         pi_sa = probs.gather(1, actions)
+            #         entropy_loss = - probs * torch.log(probs)
+            #         policy_loss = - torch.log(pi_sa + 1e-7) * (rewards + value_next - value)
+            #         value_loss = torch.nn.functional.mse_loss(rewards + value_next, value)
 
-                    all_loss = policy_loss.mean() + value_loss.mean() # + .01 * entropy_loss.sum()
+            #         all_loss = policy_loss.mean() + value_loss.mean() # + .01 * entropy_loss.sum()
                     
-                    if iter_idx % 100 == 0:
-                        writer.add_scalar("p_loss", policy_loss.mean(), iter_idx)
-                        writer.add_scalar("v_loss", value_loss.mean(), iter_idx)
-                        writer.add_scalar("all_loss", all_loss, iter_idx)
+            #         if iter_idx % 100 == 0:
+            #             writer.add_scalar("p_loss", policy_loss.mean(), iter_idx)
+            #             writer.add_scalar("v_loss", value_loss.mean(), iter_idx)
+            #             writer.add_scalar("all_loss", all_loss, iter_idx)
 
-                    optimizer.zero_grad()
-                    all_loss.backward()
-                    optimizer.step()
+            #         optimizer.zero_grad()
+            #         all_loss.backward()
+            #         optimizer.step()
             
-
-
             obses_t = obses_tp1
         winner = env.get_winner()
         writer.add_scalar("TimeStamp",obses_t[i].info["time_stamp"], epi_idx)

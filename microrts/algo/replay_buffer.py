@@ -3,7 +3,7 @@ import random
 from dataclasses import dataclass
 from microrts.rts_wrapper.envs.datatypes import GameState, PlayerAction
 from typing import List, Any
-import microrts.rts_wrapper.envs.units_name as un
+from microrts.rts_wrapper.envs.units_name import *
 from microrts.rts_wrapper.envs.utils import rd, unit_feature_encoder, encoded_utt_dict
 from dacite import from_dict
 
@@ -156,12 +156,12 @@ class ReplayBuffer(object):
             dict -- dictionary of Batches
         """
         ans = {
-                un.UNIT_TYPE_NAME_BASE:        [],
-                un.UNIT_TYPE_NAME_BARRACKS:    [],
-                un.UNIT_TYPE_NAME_WORKER:      [],
-                un.UNIT_TYPE_NAME_LIGHT:       [],
-                un.UNIT_TYPE_NAME_HEAVY:       [],
-                un.UNIT_TYPE_NAME_RANGED:      [],
+                UNIT_TYPE_NAME_BASE:        [],
+                UNIT_TYPE_NAME_BARRACKS:    [],
+                UNIT_TYPE_NAME_WORKER:      [],
+                UNIT_TYPE_NAME_LIGHT:       [],
+                UNIT_TYPE_NAME_HEAVY:       [],
+                UNIT_TYPE_NAME_RANGED:      [],
         }
         unit_types, states, units, actions, next_states, rewards, done_masks = batch
         for i in range(batch_size):

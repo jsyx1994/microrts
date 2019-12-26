@@ -14,7 +14,7 @@ rd = np.random
 rd.seed()
 
 def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callback=None):
-    """Sample actions from one game state for all units player i owns
+    """Sample actions from one game state at time t for all units player i owns
     
     Arguments:
         model {[type]} -- [description]

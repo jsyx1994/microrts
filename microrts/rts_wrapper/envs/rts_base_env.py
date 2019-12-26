@@ -7,7 +7,6 @@ import gym
 from .datatypes import Config, UnitValidAction, AGENT_ACTIONS_MAP, BaseAction, BarracksAction, WorkerAction, \
     LightAction, HeavyAction, RangedAction
 from .utils import network_action_translator, get_available_port
-from .player import Player
 import microrts.settings as settings
 
 
