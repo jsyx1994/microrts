@@ -2,6 +2,8 @@ import socket
 from microrts.algo.utils import load_model
 from .utils import signal_wrapper, network_action_translator, pa_to_jsonable, action_sampler_v1, get_action_index
 from microrts.algo.replay_buffer import ReplayBuffer
+import torch
+from torch.utils.tensorboard import SummaryWriter
 # import microrts.algo.replay_buffer as rb
 
 class Player(object):
@@ -13,6 +15,9 @@ class Player(object):
     _client_ip = None
     id = None
 
+
+    iter_idx = 0
+    writer = SummaryWriter()
 
     # very long memory
     brain = None
@@ -48,6 +53,11 @@ class Player(object):
     def load_brain(self, nn):
         self.brain = nn
     
+
+    @property
+    def memory(self):
+        return self._memory
+    
     def _memorize(self, obs_t, action, obs_tp1, reward, done):
         assert self._memory is not None
         self._memory.push(
@@ -58,12 +68,51 @@ class Player(object):
             done=done,
             )
         if reward > 0:
-            print(action)
-
+            print("positive reward:{}, action:{}".format(reward, action))
     
-    def learn(self, algo=None):
-        assert algo is not None
-        raise NotImplementedError
+    def clear_memory(self):
+        self._memory.refresh()
+    
+    def learn(self, optimizer, batch_size, algo=None, accelerator="cpu", callback=None):
+        # optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-7)
+        # assert algo is not None
+        nn = self.brain
+        device = accelerator
+        sps_dict = self._memory.sample(batch_size=batch_size)
+        for key in sps_dict:
+            if key not in nn.activated_agents:
+                continue
+
+            if sps_dict[key]:
+                states, units, actions, next_states, rewards,  done_masks = sps_dict[key].to(device)
+
+                value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
+
+                value_next = nn.critic_forward(next_states)
+                
+                pi_sa = probs.gather(1, actions)
+                entropy_loss = - probs * torch.log(probs)
+                policy_loss = - torch.log(pi_sa + 1e-7) * (rewards + value_next - value)
+                value_loss = torch.nn.functional.mse_loss(rewards + value_next, value)
+
+                all_loss = policy_loss.mean() + value_loss.mean() # + .1 * entropy_loss.sum()
+            
+                optimizer.zero_grad()
+                all_loss.backward()
+                optimizer.step()
+                
+                if self.iter_idx % 100 == 0:
+                    print("loged!!!!")
+                    self.writer.add_scalar("p_loss", policy_loss.mean(), self.iter_idx)
+                    self.writer.add_scalar("v_loss", value_loss.mean(), self.iter_idx)
+                    self.writer.add_scalar("all_loss", all_loss, self.iter_idx)
+                
+                # print(self.iter_idx)
+                self.iter_idx += 1
+                
+                del states, units, actions, next_states, rewards,  done_masks
+
+        self.clear_memory()
 
     def join(self):
         """
@@ -138,7 +187,7 @@ class Player(object):
                         done=done,
                     )
                 
-                self.units_on_working[str(u.ID)] = (obs, a)
+                self.units_on_working[str(u.ID)] = (obs, (u, a))
             
 
         # if not network_unit_actions:

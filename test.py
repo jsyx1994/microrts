@@ -70,11 +70,12 @@ def self_play(nn_path=None):
     writer = SummaryWriter()
 
 
-
     for p in players:
         p.load_brain(nn)
     
-    
+    # print(players[0].brain is players[1].brain) # True
+
+    optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-7)
 
     iter_idx = 0
     for epi_idx in range(env.max_episodes):
@@ -86,17 +87,23 @@ def self_play(nn_path=None):
                 # actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
                 players[i].think(obses=obses_t[i], accelerator=device, mode="train")
             obses_tp1 = env.step()
-            if obses_tp1[0].reward > 0:
-                print(obses_tp1[0].reward)
+            if obses_tp1[0].done:
+                # Get the last transition from env
+                for i in range(len(players)):
+                    players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
+            obses_t = obses_tp1
+            
+            for i in range(len(players)):
+                players[i].learn(optimizer=optimizer, batch_size="all", accelerator=device)
+            # if obses_tp1[0].reward > 0:
+            #     print(obses_tp1[0].reward)
 
 
 
 
-
-
-            memory.refresh()
-            optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-7)
-            iter_idx += 1
+            # memory.refresh()
+            # optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-7)
+            # iter_idx += 1
             # for i in range(len(players)):
                 # players[i].memorize(
                 #     obs_t=obses_t[i].observation,
@@ -146,8 +153,8 @@ def self_play(nn_path=None):
             #         optimizer.zero_grad()
             #         all_loss.backward()
             #         optimizer.step()
-            
-            obses_t = obses_tp1
+        
+
         winner = env.get_winner()
         writer.add_scalar("TimeStamp",obses_t[i].info["time_stamp"], epi_idx)
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))

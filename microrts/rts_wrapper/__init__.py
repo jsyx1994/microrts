@@ -45,7 +45,7 @@ register(
         map_path=os.path.join(base_dir_path, 'maps/4x4/attackHome4x4.xml'),
         height=4,
         width=4,
-        render=1,
+        render=0,
         max_cycles=1000,
         max_episodes=1000,
     )}

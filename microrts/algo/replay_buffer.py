@@ -13,7 +13,8 @@ import torch
 @dataclass
 class Transition:
     obs_t   : np.array
-    action  : List[Any] # list of (Unit, int(network_action) )
+    # action  : List[Any] # list of (Unit, int(network_action) )
+    action  : Any
     obs_tp1 : np.array
     reward  : float
     done    : bool
@@ -68,7 +69,7 @@ class ReplayBuffer(object):
 
         Arguments: 
             obs_t {np.array} -- [description]
-            action {List of Unit and action pair} -- [description]
+            action {Unit and action pair} -- [description]
             reward {float} -- [description]
             obs_tp1 {np.array} -- [description]
             done {bool} -- [description]
@@ -103,17 +104,28 @@ class ReplayBuffer(object):
         for i in idxes:
             transition = self._storage[i]
             
-            state, unit_actions, next_state, reward, done = transition.__dict__.values()
+            state, unit_action, next_state, reward, done = transition.__dict__.values()
             map_size = state.shape[-2:]
 
-            for u, a in unit_actions:
-                unit_types.append(u.type)
-                states.append(state)
-                units.append(np.hstack((unit_feature_encoder(u, map_size),encoded_utt_dict[u.type])))
-                actions.append(a)
-                next_states.append(next_state)
-                rewards.append(reward)
-                done_masks.append(done)
+            u, a = unit_action
+
+            unit_types.append(u.type)
+            states.append(state)
+            units.append(np.hstack((unit_feature_encoder(u, map_size),encoded_utt_dict[u.type])))
+            actions.append(a)
+            next_states.append(next_state)
+            rewards.append(reward)
+            done_masks.append(done)
+
+            
+            # for u, a in unit_actions:
+            #     unit_types.append(u.type)
+            #     states.append(state)
+            #     units.append(np.hstack((unit_feature_encoder(u, map_size),encoded_utt_dict[u.type])))
+            #     actions.append(a)
+            #     next_states.append(next_state)
+            #     rewards.append(reward)
+            #     done_masks.append(done)
 
 
             # states.append(state_encoder(gs=state, player=t_player))
