@@ -168,6 +168,7 @@ class ActorCritic(nn.Module):
             return AGENT_ACTIONS_MAP[actor_type].DO_NONE
 
         probs = self.actor_forward(actor_type, spatial_feature, unit_feature)
+        # print(probs)
         m = Categorical(probs)
         idx = m.sample().item()
         action = list(AGENT_ACTIONS_MAP[actor_type])[idx]

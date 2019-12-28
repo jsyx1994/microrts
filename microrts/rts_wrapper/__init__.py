@@ -60,7 +60,7 @@ register(
         map_path=os.path.join(base_dir_path, 'maps/6x6/attackHome6x6.xml'),
         height=6,
         width=6,
-        render=0,
+        render=1,
         max_cycles=1000,
         max_episodes=10000,
     )}
@@ -77,7 +77,7 @@ register(
         width=6,
         render=1,
         max_cycles=3000,
-        max_episodes=1000,
+        max_episodes=10000,
 
     )}
 )

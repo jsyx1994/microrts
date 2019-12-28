@@ -4,6 +4,8 @@ from .utils import signal_wrapper, network_action_translator, pa_to_jsonable, ac
 from microrts.algo.replay_buffer import ReplayBuffer
 import torch
 from torch.utils.tensorboard import SummaryWriter
+from .utils import action_sampler_v2
+
 # import microrts.algo.replay_buffer as rb
 
 class Player(object):
@@ -16,8 +18,6 @@ class Player(object):
     id = None
 
 
-    iter_idx = 0
-    writer = SummaryWriter()
 
     # very long memory
     brain = None
@@ -67,24 +67,40 @@ class Player(object):
             reward=reward,
             done=done,
             )
-        if reward > 0:
-            print("positive reward:{}, action:{}".format(reward, action))
+        # if reward > 0:
+        #     print("positive reward:{}, action:{}".format(reward, action))
     
     def clear_memory(self):
         self._memory.refresh()
     
-    def learn(self, optimizer, batch_size, algo=None, accelerator="cpu", callback=None):
+    def learn(self, optimizer, batch_size, iter_idx, algo=None, accelerator="cpu", log_interval=100, callback=None):
+        """A2C style
+        
+        Arguments:
+            optimizer {[type]} -- [description]
+            batch_size {[type]} -- [description]
+        
+        Keyword Arguments:
+            algo {[type]} -- [description] (default: {None})
+            accelerator {str} -- [description] (default: {"cpu"})
+            callback {function} -- log the results (default: {None})
+        """
         # optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-7)
         # assert algo is not None
         nn = self.brain
         device = accelerator
         sps_dict = self._memory.sample(batch_size=batch_size)
+
+        # following are the learning algo
         for key in sps_dict:
             if key not in nn.activated_agents:
                 continue
 
             if sps_dict[key]:
                 states, units, actions, next_states, rewards,  done_masks = sps_dict[key].to(device)
+
+                # if rewards[0][0] > 0:
+                #     print(rewards, actions)
 
                 value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
 
@@ -100,18 +116,18 @@ class Player(object):
                 optimizer.zero_grad()
                 all_loss.backward()
                 optimizer.step()
-                
-                if self.iter_idx % 100 == 0:
-                    print("loged!!!!")
-                    self.writer.add_scalar("p_loss", policy_loss.mean(), self.iter_idx)
-                    self.writer.add_scalar("v_loss", value_loss.mean(), self.iter_idx)
-                    self.writer.add_scalar("all_loss", all_loss, self.iter_idx)
-                
-                # print(self.iter_idx)
-                self.iter_idx += 1
-                
-                del states, units, actions, next_states, rewards,  done_masks
 
+                results = {
+                    "p_loss": policy_loss.mean(),
+                    "v_loss": value_loss.mean(),
+                    # "entropy_loss": entropy_loss,
+                    "all_losses":all_loss,
+                }
+
+                if iter_idx % log_interval == 0:
+                    if callback:
+                        callback(iter_idx, results)
+                
         self.clear_memory()
 
     def join(self):
@@ -170,7 +186,7 @@ class Player(object):
         
         del kwargs
 
-        self.player_actions = action_sampler_v1(self.brain, obs, info, device=device)
+        self.player_actions = action_sampler_v2(self.brain, obs, info, device=device)
 
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in self.player_actions]
 

@@ -9,12 +9,13 @@ import json
 import numpy as np
 import time
 import torch
+from torch.distributions import Categorical
 
 rd = np.random
 rd.seed()
 
 def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callback=None):
-    """Sample actions from one game state at time t for all units player i owns
+    """(Deprecated) Sample actions from one game state at time t for all units player i owns
     
     Arguments:
         model {[type]} -- [description]
@@ -63,6 +64,68 @@ def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callb
     # input()
     if callback:
         callback(samples)
+    return samples
+
+
+def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callback=None):
+    assert mode in ['stochastic', 'deterministic']
+    unit_valid_actions = info["unit_valid_actions"]  # available unit and its valid actions
+    map_size = info["map_size"]
+
+
+    uva_dict = {
+            UNIT_TYPE_NAME_BASE:        [],
+            UNIT_TYPE_NAME_BARRACKS:    [],
+            UNIT_TYPE_NAME_WORKER:      [],
+            UNIT_TYPE_NAME_LIGHT:       [],
+            UNIT_TYPE_NAME_HEAVY:       [],
+            UNIT_TYPE_NAME_RANGED:      [],
+    }
+
+    batch_dict = {
+            UNIT_TYPE_NAME_BASE:        [],
+            UNIT_TYPE_NAME_BARRACKS:    [],
+            UNIT_TYPE_NAME_WORKER:      [],
+            UNIT_TYPE_NAME_LIGHT:       [],
+            UNIT_TYPE_NAME_HEAVY:       [],
+            UNIT_TYPE_NAME_RANGED:      [],
+    }
+    samples = []
+
+    for uva in unit_valid_actions:
+        uva_dict[uva.unit.type].append(uva)
+    
+    for key in uva_dict:
+        states, units = [], []
+        if uva_dict[key]:
+            for uva in uva_dict[key]:
+                u = uva.unit
+                states.append(state)
+                units.append(np.hstack((unit_feature_encoder(u, map_size),encoded_utt_dict[u.type])))
+            
+            batch_dict[key] = (np.array(states), np.array(units))
+
+    
+    for key in batch_dict:
+        if batch_dict[key]:
+            states, units = batch_dict[key]
+            states = torch.from_numpy(states).float().to(device)
+            units = torch.from_numpy(units).float().to(device)
+            # if mode == 'stochastic':
+            #     sampled_unit_action = model.stochastic_action_sampler(key, states, units)
+            # elif mode == 'deterministic':
+            #     sampled_unit_action = model.deterministic_action_sampler(key, states, units)
+            if key not in model.activated_agents:
+                continue
+            actions = []
+            probs= model.actor_forward(key, states, units)
+            m = Categorical(probs)
+            idxes = m.sample()
+            for idx in idxes:
+                actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
+
+            sample = list(zip(uva_dict[key], actions))  
+            samples.extend(sample)
     return samples
 
 
