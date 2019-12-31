@@ -52,7 +52,7 @@ def self_play(nn_path=None):
         for k in results:
             writer.add_scalar(k, results[k], iter_idx)
 
-    env = gym.make("CurriculumBaseWorker-v0")
+    env = gym.make("battle2v2LightMelee-v0")
     assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
     memory = ReplayBuffer(10000)
 
@@ -80,7 +80,7 @@ def self_play(nn_path=None):
 
     # print(players[0].brain is players[1].brain) # True
 
-    optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-7)
+    optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-5,weight_decay=1e-5)
 
     for epi_idx in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset

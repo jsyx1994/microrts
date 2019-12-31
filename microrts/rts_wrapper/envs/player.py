@@ -1,5 +1,5 @@
 import socket
-from microrts.algo.utils import load_model
+# from microrts.algo.utils import load_model
 from .utils import signal_wrapper, network_action_translator, pa_to_jsonable, action_sampler_v1, get_action_index
 from microrts.algo.replay_buffer import ReplayBuffer
 import torch
@@ -111,7 +111,7 @@ class Player(object):
                 policy_loss = - torch.log(pi_sa + 1e-7) * (rewards + value_next - value)
                 value_loss = torch.nn.functional.mse_loss(rewards + value_next, value)
 
-                all_loss = policy_loss.mean() + value_loss.mean() # + .1 * entropy_loss.sum()
+                all_loss = policy_loss.mean() + value_loss.mean() +  1 * entropy_loss.mean()
             
                 optimizer.zero_grad()
                 all_loss.backward()

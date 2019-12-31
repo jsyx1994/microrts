@@ -56,7 +56,7 @@ class ActorCritic(nn.Module):
             UNIT_TYPE_NAME_BASE,
             # UNIT_TYPE_NAME_BARRACKS,
             UNIT_TYPE_NAME_WORKER,
-            # UNIT_TYPE_NAME_HEAVY,
+            UNIT_TYPE_NAME_HEAVY,
             UNIT_TYPE_NAME_LIGHT,
             # UNIT_TYPE_NAME_RANGED,
         ]
@@ -117,6 +117,15 @@ class ActorCritic(nn.Module):
                 nn.Linear(64, 64), nn.ReLU(),
                 nn.Linear(64, 32), nn.ReLU(),
                 nn.Linear(32, LightAction.__members__.items().__len__()),
+                nn.Softmax(dim=1),
+            ),
+            UNIT_TYPE_NAME_HEAVY: nn.Sequential(
+                nn.Linear(256, 128), nn.ReLU(),
+                nn.Linear(128, 64), nn.ReLU(),
+                nn.Linear(64, 64), nn.ReLU(),
+                nn.Linear(64, 64), nn.ReLU(),
+                nn.Linear(64, 32), nn.ReLU(),
+                nn.Linear(32, HeavyAction.__members__.items().__len__()),
                 nn.Softmax(dim=1),
             )
         })
