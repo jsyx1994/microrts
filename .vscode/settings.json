@@ -5,5 +5,10 @@
     "autoDocstring.docstringFormat": "default",
     "cSpell.words": [
         "obses"
-    ]
+    ],
+    "python.linting.pylintEnabled": true,
+    "python.linting.mypyEnabled": false,
+    "python.linting.pylamaEnabled": false,
+    "editor.fontFamily": "'Droid Sans Mono', 'monospace', monospace, 'Droid Sans Fallback'",
+    "editor.fontLigatures":true
 }

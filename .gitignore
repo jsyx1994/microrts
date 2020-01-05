@@ -3,6 +3,7 @@ runs/
 data/
 models/
 .VSCodeCounter/
+baselines/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -14,6 +14,7 @@ from torch.distributions import Categorical
 rd = np.random
 rd.seed()
 
+
 def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callback=None):
     """(Deprecated) Sample actions from one game state at time t for all units player i owns
     
@@ -57,7 +58,6 @@ def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callb
             sampled_unit_action = model.stochastic_action_sampler(u.type, spatial_feature, unit_feature)
         elif mode == 'deterministic':
             sampled_unit_action = model.deterministic_action_sampler(u.type, spatial_feature, unit_feature)
-
         samples.append((uva, sampled_unit_action))
         # uas.append((u, sampled_unit_action))
     # print(samples)
@@ -127,7 +127,6 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
             sample = list(zip(uva_dict[key], actions))  
             samples.extend(sample)
     return samples
-
 
 def get_available_port():
     tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -212,8 +211,7 @@ def network_simulator(unit_valid_actions: List[UnitValidAction]):
 
 
 def extract_record(gs: GameState, sl_target: int) -> Record:
-    """
-    get the target players' (state - actions) pair
+    """Get the target players' (state - actions) pair
     :param gs:
     :param sl_target:
     :return:Record
@@ -267,7 +265,7 @@ def state_encoder(gs: GameState, player):
     opp_resources = p2_info.resources if current_player == p1_info.ID else p1_info.resources
 
     channel_terrain = np.array([int(x) for x in pgs.terrain]).reshape((1, h, w))
-    channel_type = np.zeros((len(UNIT_COLLECTION), h, w))
+    channel_type = np.zeros((len(UNIT_COLLECTION), h, w)) 
     channel_hp_ratio = np.zeros((1, h, w))
     channel_resource = np.zeros((8, h, w))
 
@@ -276,6 +274,7 @@ def state_encoder(gs: GameState, player):
     channel_my_resources = np.full((1, h, w), fill_value=my_resources)
     channel_opp_resources = np.full((1, h, w), fill_value=opp_resources)
 
+    id_location_map = {}
     for unit in units:
         _owner = unit.player
         _type = unit.type
@@ -292,16 +291,58 @@ def state_encoder(gs: GameState, player):
         channel_type[_one_hot_type_pos][_x][_y] = 1
         channel_resource[_one_hot_resource_pos][_x][_y] = 1
 
+        id_location_map[_id] = _x, _y
+
+    
+    # state-action (not network-action) ecoding, total: 21
+    actions = gs.actions
+    channel_action_type            = np.zeros((7, h, w))
+    channel_action_para            = np.zeros((5, h, w))
+    channel_action_x               = np.zeros((1, h, w))
+    channel_action_y               = np.zeros((1, h, w))
+    channel_action_produce_type    = np.zeros((len(UNIT_COLLECTION), h, w))
+    for action in actions:
+        _id = action.ID
+        _act = action.action
+        _x, _y = id_location_map[_id]
+
+        channel_action_type[_act.type][_x][_y] = 1
+
+        if 0 <= _act.parameter <= 3:  
+            channel_action_para[_act.parameter] = 1
+        else:
+            channel_action_para[-1] = 1
+        
+        # print(_act.x, _act.y) => -1, -1
+        channel_action_x[0][_x][_y] = _act.x / gs.pgs.width
+        channel_action_y[0][_x][_y] = _act.y / gs.pgs.height
+
+        if _act.unitType:
+            channel_action_produce_type[UNIT_COLLECTION.index(_act.unitType)][_x][_y] = 1
+    
+
+
+
+    
+
+
     spatial_features = np.vstack(
         (
-            channel_is_ally,
-            channel_type,
-            channel_resource,
-            channel_hp_ratio,
-            channel_terrain,
+            channel_is_ally,        # 2
+            channel_type,           # 7
+            channel_resource,       # 8
+            channel_hp_ratio,       # 1
+            channel_terrain,        # 1
 
-            channel_my_resources,
-            channel_opp_resources
+            channel_my_resources,   # 1
+            channel_opp_resources,  # 1
+
+            channel_action_type,    # 7
+            channel_action_para,    # 5
+            channel_action_x,       # 1
+            channel_action_y,       # 1
+            channel_action_produce_type,  # 7
+                                    # total 42
         ),
     )
     return spatial_features
@@ -680,6 +721,7 @@ def resource_encoder(amount, feature_length=8, amount_threshold=2):
 
 def unit_feature_encoder(unit:Unit, map_size:list):
     map_height, map_width = map_size
+
     unit_type = unit.type
     unit_x = unit.x
     unit_y = unit.y

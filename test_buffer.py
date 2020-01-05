@@ -12,7 +12,6 @@ from microrts.rts_wrapper.envs.utils import action_sampler_v1
 from microrts.algo.utils import load_model
 from microrts.algo.model import ActorCritic
 from microrts.algo.replay_buffer import ReplayBuffer
-from microrts.algo.a2c import A2C
 
 
 def evaluate():
@@ -81,9 +80,7 @@ def self_play(nn_path=None):
 
     # print(players[0].brain is players[1].brain) # True
 
-    optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
-
-    algo = A2C(nn,lr=1e-5, weight_decay=1e-7)
+    optimizer = torch.optim.RMSprop(nn.parameters(),lr=1e-6,weight_decay=1e-4)
 
     for epi_idx in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset
@@ -93,40 +90,26 @@ def self_play(nn_path=None):
             # actions = []
             for i in range(len(players)):
                 # actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
-                trans = players[i].think(obses=obses_t[i], accelerator=device, mode="train")
-                if trans:
-                    memory.push(**trans)
+                players[i].think(obses=obses_t[i], accelerator=device, mode="train")
             obses_tp1 = env.step()
 
-            # just for analisis
             for i in range(len(players)):
                 players_G0[i] += obses_tp1[i].reward
 
             if obses_tp1[0].done:
                 # Get the last transition from env
                 for i in range(len(players)):
-                    trans = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
-                    if trans:
-                        memory.push(**trans)
-
+                    players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
             obses_t = obses_tp1
             if obses_t[0].reward > 0 or obses_t[1].reward > 0:
                 print(obses_t[0].reward, obses_t[1].reward)
             
-            
-
-
-            # for i in range(len(players)):
-            #     players[i].learn(optimizer=optimizer, iter_idx=iter_idx, batch_size="all", accelerator=device, callback=logger)
-            #     iter_idx += 1
-            
-        algo.update(memory, iter_idx, device, logger)
-        iter_idx += 1
-
-        if epi_idx % 500 == 0:
-            torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl" + str(epi_idx) + ".pth"))
+            for i in range(len(players)):
+                players[i].learn(optimizer=optimizer, iter_idx=iter_idx, batch_size="all", accelerator=device, callback=logger)
+                iter_idx += 1
 
         print(players_G0)
+
         winner = env.get_winner()
         writer.add_scalar("TimeStamp",obses_t[i].info["time_stamp"], epi_idx)
         writer.add_scalar("Return_diff",abs(players_G0[0] - players_G0[1]) , epi_idx)

@@ -107,11 +107,11 @@ class Player(object):
                 value_next = nn.critic_forward(next_states)
                 
                 pi_sa = probs.gather(1, actions)
-                entropy_loss = - probs * torch.log(probs)
+                entropy_loss = - probs * torch.log(probs + 1e-7)
                 policy_loss = - torch.log(pi_sa + 1e-7) * (rewards + value_next - value)
                 value_loss = torch.nn.functional.mse_loss(rewards + value_next, value)
 
-                all_loss = policy_loss.mean() + value_loss.mean() +  1 * entropy_loss.mean()
+                all_loss = policy_loss.mean() + value_loss.mean() +  entropy_loss.mean()
             
                 optimizer.zero_grad()
                 all_loss.backward()
@@ -190,20 +190,30 @@ class Player(object):
 
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in self.player_actions]
 
+        transition = {}
         if mode == "train":
             # sample the transition in a correct way
             for u, a in network_unit_actions:
                 _id = str(u.ID)
                 if _id in self.units_on_working:
-                    self._memorize(
-                        obs_t=self.units_on_working[_id][0],
-                        action=self.units_on_working[_id][1],
-                        obs_tp1=obs,
-                        reward=reward,
-                        done=done,
-                    )
+                    transition = {
+                        "obs_t":self.units_on_working[_id][0],
+                        "action":self.units_on_working[_id][1],
+                        "obs_tp1":obs,
+                        "reward":reward,
+                        "done":done,
+                        }   
+                    # self._memorize(
+                        # obs_t=self.units_on_working[_id][0],
+                        # action=self.units_on_working[_id][1],
+                        # obs_tp1=obs,
+                        # reward=reward,
+                        # done=done,
+                    #     )
                 
                 self.units_on_working[str(u.ID)] = (obs, (u, a))
+        
+        return transition
             
 
         # if not network_unit_actions:

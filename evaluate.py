@@ -17,6 +17,7 @@ def evaluate(nn_path=None):
     #     for k in results:
     #         writer.add_scalar(k, results[k], iter_idx)
 
+    # env = gym.make("Evalbattle2v2LightMelee-v0")
     env = gym.make("Evalbattle2v2LightMelee-v0")
     # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
 
@@ -70,7 +71,6 @@ def evaluate(nn_path=None):
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
         
     print(env.setup_commands)
-    torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl.pth"))
 
 if __name__ == "__main__":
-    evaluate(nn_path=os.path.join(settings.models_dir, "rl.pth"))
+    evaluate(nn_path=os.path.join(settings.models_dir, "rl2000.pth"))
