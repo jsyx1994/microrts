@@ -136,7 +136,7 @@ class Player(object):
         """
         server_socket = socket.socket()
         server_socket.bind((self._client_ip, self.port))
-        server_socket.listen(5)
+        server_socket.listen()
         print("Player{} Wait for Java client connection...".format(self.id))
         self.conn, address_info = server_socket.accept()
 

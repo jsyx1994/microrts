@@ -94,7 +94,7 @@ class BattleEnv(BaseEnv):
         """
         for p in self.players:
             res = p.expect()
-        return res
+        return int(res)
 
 
 def main():

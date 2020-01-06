@@ -26,14 +26,19 @@ class Batches:
     actions: np.array
     next_states: np.array
     rewards: np.array
-    done_masks: np.array
+    done: np.array
     def to(self,device):
+        done_masks = torch.FloatTensor(
+                    [0.0 if _done == 1 else 1.0 for _done in self.done]
+                )
         return  torch.from_numpy(self.states).float().to(device), \
                 torch.from_numpy(self.units).float().to(device), \
                 torch.from_numpy(self.actions).long().to(device).unsqueeze(1), \
                 torch.from_numpy(self.next_states).float().to(device), \
                 torch.from_numpy(self.rewards).float().to(device).unsqueeze(1), \
-                torch.from_numpy(self.done_masks).bool().to(device).unsqueeze(1)
+                done_masks.to(device).unsqueeze(1)
+                # torch.from_numpy(self.done).int().to(device).unsqueeze(1)
+                
 
 
 class ReplayBuffer(object):
@@ -203,7 +208,7 @@ class ReplayBuffer(object):
                     "actions": np.array(actions),
                     "next_states":np.array(next_states),
                     "rewards":np.array(rewards),
-                    "done_masks":  np.array(done_masks)
+                    "done":  np.array(done_masks)
                 }
                 ans[key] = Batches(**temp)
         return ans

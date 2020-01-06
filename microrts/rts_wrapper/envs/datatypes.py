@@ -275,7 +275,7 @@ class GsWrapper:
     gs: GameState
     reward: float
     validActions: List[UnitValidAction]
-    done: Optional[bool] = False
+    done: Optional[int] = 0 # 0: continue; 1: truly end; 2: time up
 
 
 @dataclass

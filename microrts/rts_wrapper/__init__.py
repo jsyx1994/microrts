@@ -105,7 +105,8 @@ environments = [
                 'config': Config(
                     ai1_type='socketAI',
                     # ai2_type='NaiveMCTS',
-                    ai2_type='Random',
+                    ai2_type='WorkerRush',
+                    # ai2_type='Random',
                     # ai2_type='RandomBiased',
                     # ai2_type='socketAI',
                     map_path=os.path.join(settings.map_dir, '6x6/battle2v2LightMelee6x6.xml'),
@@ -113,7 +114,7 @@ environments = [
                     width=6,
                     # period=20,
                     max_cycles=1000,
-                    max_episodes=5000,
+                    max_episodes=50000,
                 ),
             }
     }

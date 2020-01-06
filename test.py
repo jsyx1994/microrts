@@ -53,8 +53,8 @@ def self_play(nn_path=None):
         for k in results:
             writer.add_scalar(k, results[k], iter_idx)
 
-    env = gym.make("battle2v2LightMelee-v0")
-    assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
+    env = gym.make("singleBattle-v0")
+    # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
     memory = ReplayBuffer(10000)
 
     start_from_scratch = nn_path is None
@@ -78,7 +78,6 @@ def self_play(nn_path=None):
     for p in players:
         p.load_brain(nn)
     
-
     # print(players[0].brain is players[1].brain) # True
 
     optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
@@ -107,11 +106,20 @@ def self_play(nn_path=None):
                 for i in range(len(players)):
                     trans = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
                     if trans:
+                        print(obses_tp1[0].done)
                         memory.push(**trans)
+                
 
             obses_t = obses_tp1
             if obses_t[0].reward > 0 or obses_t[1].reward > 0:
                 print(obses_t[0].reward, obses_t[1].reward)
+    
+
+        for i in range(len(players)):
+            trans = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
+        if trans:
+            print(obses_tp1[0].done)
+            memory.push(**trans)
             
             
 
@@ -123,7 +131,7 @@ def self_play(nn_path=None):
         algo.update(memory, iter_idx, device, logger)
         iter_idx += 1
 
-        if epi_idx % 500 == 0:
+        if (epi_idx + 1) % 500 == 0:
             torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl" + str(epi_idx) + ".pth"))
 
         print(players_G0)
@@ -138,10 +146,9 @@ def self_play(nn_path=None):
 
 
 if __name__ == '__main__':
-    from microrts.settings import models_dir
-    import os
+    # from microrts.settings import models_dir
+    # import os
     # self_play(nn_path=os.path.join(models_dir, "rl.pth"))
-    self_play()
+    # self_play()
     # evaluate()
-# print(rts_wrapper.base_dir_path)\
-# print(os.path.join(rts_wrapper.base_dir_path, 'microrts-master/out/artifacts/microrts_master_jar/microrts-master.jar'))
+    self_play()

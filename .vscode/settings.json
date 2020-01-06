@@ -4,6 +4,7 @@
     "python.linting.enabled": true,
     "autoDocstring.docstringFormat": "default",
     "cSpell.words": [
+        "nenvs",
         "obses"
     ],
     "python.linting.pylintEnabled": true,

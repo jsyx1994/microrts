@@ -173,6 +173,7 @@ def signal_wrapper(raw):
         done {bool}
         info {dict}
     """
+    # print(raw)
     curr_player = int(raw.split('\n')[0].split()[1])
     gs_wrapper = from_dict(data_class=GsWrapper, data=json.loads(raw.split('\n')[1]))
     # gs_wrapper = GsWrapper(**json.loads(raw.split('\n')[1]))
