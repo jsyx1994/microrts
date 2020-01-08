@@ -9,9 +9,7 @@ from microrts.algo.model import ActorCritic
 from microrts.algo.utils import load_model
 
 
-nn = None
-
-def make_env(env_id):
+def make_env(env_id, nn):
     assert nn is not None
     def _thunk():
         env = gym.make(env_id)
@@ -24,10 +22,10 @@ def make_env(env_id):
     return _thunk
 
 
-def make_vec_envs(env_id, num_processes):
+def make_vec_envs(env_id, model, num_processes, context):
     
     assert num_processes > 0, "Can not make no env!"
-    envs = [make_env(env_id) for i in range(num_processes)]
+    envs = [make_env(env_id, model) for i in range(num_processes)]
 
     # print(envs[0]().players[0].brain is envs[1]().players[0].brain)
     # env1 = envs[0]().players[0].brain
@@ -35,7 +33,7 @@ def make_vec_envs(env_id, num_processes):
     
     # input()
 
-    envs = ParallelVecEnv(envs)
+    envs = ParallelVecEnv(envs, context=context)
     return envs
 
 
@@ -56,10 +54,15 @@ def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, ):
                 pipe.send(env.reset())
             elif cmd == 'step':
                 obs = env.step(data)
-                if obs.done:
+                if obs[0].done:
                     env.get_winner()
                     obs = env.reset()
                 pipe.send(obs)
+            # elif cmd == 'getp':
+            #     # print("int hitsafsd")
+            #     player = env.get_players()
+            #     print(player)
+            #     pipe.send("1")
             # elif cmd == 'render':
             #     pipe.send(env.render(mode='rgb_array'))
             elif cmd == 'close':
@@ -114,6 +117,13 @@ class ParallelVecEnv(VecEnv):
         self.waiting_step = False
         self.viewer = None
         super(ParallelVecEnv, self).__init__(len(env_fns))
+    
+
+    # def get_players(self):
+    #     for pipe in self.parent_pipes:
+    #         pipe.send(('getp',None))
+
+    #     return [pipe.recv() for pipe in self.parent_pipes]
     
     def reset(self):
         """
@@ -183,9 +193,11 @@ def play(env_id, nn_path=None):
     
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # device = "cpu"
+    nn.share_memory()
+
     nn.to(device)
 
-    envs = make_vec_envs(env_id, 4)
+    envs = make_vec_envs(env_id, nn, 8, context="fork")
     # envs = ParallelVecEnv(envs)
     input()
 

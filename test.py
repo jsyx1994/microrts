@@ -13,7 +13,7 @@ from microrts.algo.utils import load_model
 from microrts.algo.model import ActorCritic
 from microrts.algo.replay_buffer import ReplayBuffer
 from microrts.algo.a2c import A2C
-
+from microrts.algo.agents import Agent
 
 def evaluate():
     """deprecated"""
@@ -53,6 +53,9 @@ def self_play(nn_path=None):
         for k in results:
             writer.add_scalar(k, results[k], iter_idx)
 
+    def memo_inserter(transitions):
+        memory.push(**transitions)
+
     env = gym.make("singleBattle-v0")
     # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
     memory = ReplayBuffer(10000)
@@ -73,29 +76,40 @@ def self_play(nn_path=None):
     import time
     writer = SummaryWriter()
     iter_idx = 0
-
-
-    for p in players:
-        p.load_brain(nn)
     
+
+    agents = [Agent(model=nn) for _ in range(env.players_num)]
+
     # print(players[0].brain is players[1].brain) # True
 
     optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
 
     algo = A2C(nn,lr=1e-5, weight_decay=1e-7)
 
+    frames = 0
+    st = time.time()
     for epi_idx in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset
         start_time = time.time()
         players_G0 = [0, 0]
         while not obses_t[0].done:
-            # actions = []
+            actions = []
             for i in range(len(players)):
                 # actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
-                trans = players[i].think(obses=obses_t[i], accelerator=device, mode="train")
-                if trans:
-                    memory.push(**trans)
-            obses_tp1 = env.step()
+                # _st = time.time()
+                action = agents[i].think(callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
+                # input()
+                # print((time.time() - _st))
+
+                # action = players[i].think(obses=obses_t[i], accelerator=device, mode="train")
+                actions.append(action)
+                # if trans:
+                #     memory.push(**trans)
+            
+            obses_tp1 = env.step(actions)
+            frames += 1
+            if frames == 2000:
+                print(frames / (time.time() - st))
 
             # just for analisis
             for i in range(len(players)):
@@ -104,26 +118,29 @@ def self_play(nn_path=None):
             if obses_tp1[0].done:
                 # Get the last transition from env
                 for i in range(len(players)):
-                    trans = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
-                    if trans:
-                        print(obses_tp1[0].done)
-                        memory.push(**trans)
+                    action = agents[i].think(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+                    # action = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
+
+                    # if trans:
+                    #     print(obses_tp1[0].done)
+                    #     memory.push(**trans)
                 
 
             obses_t = obses_tp1
             if obses_t[0].reward > 0 or obses_t[1].reward > 0:
                 print(obses_t[0].reward, obses_t[1].reward)
+            
+
     
 
         for i in range(len(players)):
-            trans = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
-        if trans:
-            print(obses_tp1[0].done)
-            memory.push(**trans)
-            
-            
+            action = agents[i].think(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+            # action = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
 
-
+            # if trans:
+            #     print(obses_tp1[0].done)
+            #     memory.push(**trans)
+            
             # for i in range(len(players)):
             #     players[i].learn(optimizer=optimizer, iter_idx=iter_idx, batch_size="all", accelerator=device, callback=logger)
             #     iter_idx += 1

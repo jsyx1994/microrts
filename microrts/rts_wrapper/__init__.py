@@ -105,8 +105,8 @@ environments = [
                 'config': Config(
                     ai1_type='socketAI',
                     # ai2_type='NaiveMCTS',
-                    ai2_type='WorkerRush',
-                    # ai2_type='Random',
+                    # ai2_type='WorkerRush',
+                    ai2_type='Random',
                     # ai2_type='RandomBiased',
                     # ai2_type='socketAI',
                     map_path=os.path.join(settings.map_dir, '6x6/battle2v2LightMelee6x6.xml'),
@@ -117,7 +117,25 @@ environments = [
                     max_episodes=50000,
                 ),
             }
-    }
+    },
+
+    {
+        "id": 'CurriculumBaseWorker-v0',
+        "entry_point": 'microrts.rts_wrapper.envs:BattleEnv',
+        "kwargs":
+            {
+                'config': Config(
+                    ai1_type='socketAI',
+                    ai2_type='socketAI',
+                    map_path=os.path.join(settings.map_dir, '6x6/baseWorkerResources6x6.xml'),
+                    height=6,
+                    width=6,
+                    # render=1,
+                    max_cycles=3000,
+                    max_episodes=10000,
+                ),
+            }
+    },
 
 ]
 
@@ -144,118 +162,22 @@ for env in environments:
         kwargs=eval_env["kwargs"]
     )
 
-# for env in environments:
-#     # env for evaluating, plus Eval
-#     env["kwargs"]["config"].render=1
-#     env["kwargs"]["config"].period=20
-#     env["id"] = "Eval" + env["id"]
-#     print(env["id"])
-#     register(
-#         id=env["id"],
-#         entry_point=env["entry_point"],
-#         kwargs=env["kwargs"]
-#     )
-
-# print(envs.registry.all())
-
-
-
 
 # register(
-#     id='SingleAgent-v0',
+#     id='CurriculumBaseWorker-v0',
 #     entry_point='microrts.rts_wrapper.envs:BattleEnv',
 #     kwargs={'config': Config(
 #         ai1_type='socketAI',
-#         ai2_type='Passive',
-#         map_path=os.path.join(base_dir_path, 'maps/6x6/attackHome6x6.xml'),
+#         ai2_type='socketAI',
+#         map_path=os.path.join(base_dir_path, 'maps/6x6/baseWorkerResources6x6.xml'),
 #         height=6,
 #         width=6,
-#         render=0,
-#         max_cycles=1000,
-#         max_episodes=1000,
-
-#     )}
-# )
-
-# register(
-#     id='attackHome-v0',
-#     entry_point='microrts.rts_wrapper.envs:BattleEnv',
-#     kwargs={'config': Config(
-#         ai1_type='socketAI',
-#         ai2_type='Passive',
-#         map_path=os.path.join(base_dir_path, 'maps/4x4/attackHome4x4.xml'),
-#         height=4,
-#         width=4,
-#         render=0,
-#         max_cycles=1000,
-#         max_episodes=1000,
-#     )}
-# )
-
-# register(
-#     id='attackHome-v1',
-#     entry_point='microrts.rts_wrapper.envs:BattleEnv',
-#     kwargs={'config': Config(
-#         ai1_type='socketAI',
-#         ai2_type='Passive',
-#         map_path=os.path.join(base_dir_path, 'maps/4x4/attackHome4x4-v1.xml'),
-#         height=4,
-#         width=4,
 #         render=1,
-#         max_cycles=1000,
-#         max_episodes=1000,
+#         max_cycles=3000,
+#         max_episodes=10000,
+
 #     )}
 # )
-
-# register(
-#     id='singleBattle-v0',
-#     entry_point='microrts.rts_wrapper.envs:BattleEnv',
-#     kwargs={'config': Config(
-#         ai1_type='socketAI',
-#         ai2_type='socketAI',
-#         map_path=os.path.join(base_dir_path, 'maps/6x6/singleBattle6x6.xml'),
-#         height=6,
-#         width=6,
-#         render=0,
-#         # period=20,
-#         max_cycles=1000,
-#         max_episodes=1000,
-#     )}
-# )
-
-# register(
-#     id='battle2v2LightMelee-v0',
-#     entry_point='microrts.rts_wrapper.envs:BattleEnv',
-#     kwargs={'config': Config(
-#         ai1_type='socketAI',
-#         ai2_type='socketAI',
-#         map_path=os.path.join(base_dir_path, 'maps/6x6/battle2v2LightMelee6x6.xml'),
-#         height=6,
-#         width=6,
-#         render=0,
-#         # period=20,
-#         max_cycles=1000,
-#         max_episodes=5000,
-#     )}
-# )
-
-
-
-register(
-    id='CurriculumBaseWorker-v0',
-    entry_point='microrts.rts_wrapper.envs:BattleEnv',
-    kwargs={'config': Config(
-        ai1_type='socketAI',
-        ai2_type='socketAI',
-        map_path=os.path.join(base_dir_path, 'maps/6x6/baseWorkerResources6x6.xml'),
-        height=6,
-        width=6,
-        render=1,
-        max_cycles=3000,
-        max_episodes=10000,
-
-    )}
-)
 
 register(
     id='CurriculumBaseWorker-v1',

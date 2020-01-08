@@ -9,7 +9,10 @@ from .utils import action_sampler_v2
 # import microrts.algo.replay_buffer as rb
 
 class Player(object):
-    """Part of the gym environment, need to handle issues with java end interaction
+    """Part of the gym environment, need to handle low-level issues with java end interaction
+    some of the member function are deprecated because of contianing high-level operations (Moved to
+    microrts.algo.agents)
+    
     """
     conn = None
     type = None
@@ -154,7 +157,7 @@ class Player(object):
         # print(raw)
         return signal_wrapper(raw)
 
-    def think(self, **kwargs):
+    def think(self, callback=None, **kwargs):
         """figure out the action according to helper function and obs, store env related action to itself and \
             nn related result to Replay Buffer. More
         Arguments:
@@ -213,7 +216,10 @@ class Player(object):
                 
                 self.units_on_working[str(u.ID)] = (obs, (u, a))
         
-        return transition
+        if transition and callback:
+            callback(transition)
+        
+        return self.player_actions
             
 
         # if not network_unit_actions:
@@ -222,12 +228,12 @@ class Player(object):
         # return network_unit_actions
         # return action_sampler_v1(self.brain, obs, info)
 
-    def act(self):
+    def act(self, action):
+        """Do some action according to action_sampler in the env together with other players
         """
-        do some action in the env together with other players
-        """
-        assert self.player_actions is not None
-        action = network_action_translator(self.player_actions)
+        # assert self.player_actions is not None
+        assert action is not None
+        action = network_action_translator(action)
         pa = pa_to_jsonable(action)
         self._send_msg(pa)
 

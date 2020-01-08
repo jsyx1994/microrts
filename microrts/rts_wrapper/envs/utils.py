@@ -68,6 +68,7 @@ def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callb
 
 
 def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callback=None):
+    # import time
     assert mode in ['stochastic', 'deterministic']
     unit_valid_actions = info["unit_valid_actions"]  # available unit and its valid actions
     map_size = info["map_size"]
@@ -94,7 +95,9 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
 
     for uva in unit_valid_actions:
         uva_dict[uva.unit.type].append(uva)
-    
+    # print(len(unit_valid_actions))
+
+    # st = time.time()
     for key in uva_dict:
         states, units = [], []
         if uva_dict[key]:
@@ -104,8 +107,11 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
                 units.append(np.hstack((unit_feature_encoder(u, map_size),encoded_utt_dict[u.type])))
             
             batch_dict[key] = (np.array(states), np.array(units))
+    # print(1, time.time() - st)
 
     
+    # st = time.time()
+
     for key in batch_dict:
         if batch_dict[key]:
             states, units = batch_dict[key]
@@ -126,7 +132,11 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
 
             sample = list(zip(uva_dict[key], actions))  
             samples.extend(sample)
+    # print(2, time.time() - st)
+    
+
     return samples
+
 
 def get_available_port():
     tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

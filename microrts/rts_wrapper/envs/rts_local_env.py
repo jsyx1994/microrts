@@ -21,6 +21,9 @@ class BattleEnv(BaseEnv):
     @property
     def players_num(self):
         return len(self.players)
+    
+    def get_players(self):
+        return self.players
 
     def __init__(self, config):
         super(BattleEnv, self).__init__(config)
@@ -59,13 +62,13 @@ class BattleEnv(BaseEnv):
             )
 
     # TODO: get
-    def step(self):
+    def step(self, actions):
         """
         local env should using Threads to avoid dead lock, while remote needn't
         """
         import time
         for i in range(self.players_num):
-            self.players[i].act()
+            self.players[i].act(actions[i])
             # time.sleep(.1)
 
         signals_res = [self._obs2dataclass(player.observe()) for player in self.players]
