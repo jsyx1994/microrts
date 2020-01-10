@@ -1,5 +1,5 @@
 
-from microrts.rts_wrapper.envs.utils import action_sampler_v2, get_action_index
+from microrts.rts_wrapper.envs.utils import action_sampler_v2, get_action_index, action_sampler_v1
 
 class Agent:
 

@@ -6,12 +6,21 @@ from .replay_buffer import ReplayBuffer
 
 
 class A2C:
-    def __init__(self,ac_model, lr=None, weight_decay=None, eps=None, log_interval=100, gamma=0.99):
+    def __init__(self,
+        ac_model,
+        lr=None,
+        weight_decay=None,
+        eps=None,
+        log_interval=100,
+        gamma=0.99,
+        entropy_coef=0.01,
+        ):
         self.actor_critic = ac_model
         self.optimizer = optim.RMSprop(ac_model.parameters(), lr)
         # self.optimizer = optim.Adam(ac_model.parameters(), lr)
 
         self.gamma = gamma
+        self.entropy_coef = entropy_coef
 
         self.log_interval = log_interval
 
@@ -46,7 +55,7 @@ class A2C:
                 policy_loss = - torch.log(pi_sa + 1e-7) * (targets - value)
                 value_loss = torch.nn.functional.mse_loss(targets, value)
 
-                all_loss = policy_loss.mean() + value_loss.mean() + .1 * entropy_loss.mean()
+                all_loss = policy_loss.mean() + value_loss.mean() + self.entropy_coef * entropy_loss.mean()
             
                 optimizer.zero_grad()
                 all_loss.backward()
@@ -55,6 +64,7 @@ class A2C:
                 results = {
                     "p_loss": policy_loss.mean(),
                     "v_loss": value_loss.mean(),
+                    "rewards": rewards.mean(),
                     # "entropy_loss": entropy_loss,
                     "all_losses":all_loss,
                 }

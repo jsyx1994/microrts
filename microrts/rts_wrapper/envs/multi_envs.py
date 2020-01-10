@@ -9,23 +9,19 @@ from microrts.algo.model import ActorCritic
 from microrts.algo.utils import load_model
 
 
-def make_env(env_id, nn):
-    assert nn is not None
+def make_env(env_id):
     def _thunk():
         env = gym.make(env_id)
-        for p in env.players:
-            p.load_brain(nn)
         # print(env.players[0].brain is env.players[1].brain)
-
         return env
     
     return _thunk
 
 
-def make_vec_envs(env_id, model, num_processes, context):
+def make_vec_envs(env_id, num_processes, context):
     
     assert num_processes > 0, "Can not make no env!"
-    envs = [make_env(env_id, model) for i in range(num_processes)]
+    envs = [make_env(env_id) for i in range(num_processes)]
 
     # print(envs[0]().players[0].brain is envs[1]().players[0].brain)
     # env1 = envs[0]().players[0].brain
@@ -54,9 +50,9 @@ def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, ):
                 pipe.send(env.reset())
             elif cmd == 'step':
                 obs = env.step(data)
-                if obs[0].done:
-                    env.get_winner()
-                    obs = env.reset()
+                # if obs[0].done:
+                #     env.get_winner()
+                #     obs = env.reset()
                 pipe.send(obs)
             # elif cmd == 'getp':
             #     # print("int hitsafsd")

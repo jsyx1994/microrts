@@ -111,28 +111,31 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
 
     
     # st = time.time()
+    
+    with torch.no_grad():
+        for key in batch_dict:
+            if batch_dict[key]:
+                states, units = batch_dict[key]
+                states = torch.from_numpy(states).float().to(device)
+                units = torch.from_numpy(units).float().to(device)
+                # if mode == 'stochastic':
+                #     sampled_unit_action = model.stochastic_action_sampler(key, states, units)
+                # elif mode == 'deterministic':
+                #     sampled_unit_action = model.deterministic_action_sampler(key, states, units)
+                if key not in model.activated_agents:
+                    continue
+                actions = []
+                probs= model.actor_forward(key, states, units)
+                # print(probs.requires_grad)
 
-    for key in batch_dict:
-        if batch_dict[key]:
-            states, units = batch_dict[key]
-            states = torch.from_numpy(states).float().to(device)
-            units = torch.from_numpy(units).float().to(device)
-            # if mode == 'stochastic':
-            #     sampled_unit_action = model.stochastic_action_sampler(key, states, units)
-            # elif mode == 'deterministic':
-            #     sampled_unit_action = model.deterministic_action_sampler(key, states, units)
-            if key not in model.activated_agents:
-                continue
-            actions = []
-            probs= model.actor_forward(key, states, units)
-            m = Categorical(probs)
-            idxes = m.sample()
-            for idx in idxes:
-                actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
+                m = Categorical(probs)
+                idxes = m.sample()
+                for idx in idxes:
+                    actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
 
-            sample = list(zip(uva_dict[key], actions))  
-            samples.extend(sample)
-    # print(2, time.time() - st)
+                sample = list(zip(uva_dict[key], actions))  
+                samples.extend(sample)
+        # print(2, time.time() - st)
     
 
     return samples
@@ -197,6 +200,7 @@ def signal_wrapper(raw):
         "unit_valid_actions": gs_wrapper.validActions,  # friends and their valid actions
         # "units_list": [u for u in gs_wrapper.gs.pgs.units],
         # "enemies_actions": None,
+        "winner": gs_wrapper.winner,
         "current_player": curr_player,
         "player_resources": [p.resources for p in gs_wrapper.gs.pgs.players],
         "map_size": [gs_wrapper.gs.pgs.height, gs_wrapper.gs.pgs.width],

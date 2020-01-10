@@ -97,6 +97,7 @@ class BattleEnv(BaseEnv):
         """
         for p in self.players:
             res = p.expect()
+        # print("winner is :", res)
         return int(res)
 
 

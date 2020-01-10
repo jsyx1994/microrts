@@ -54,9 +54,11 @@ def self_play(nn_path=None):
             writer.add_scalar(k, results[k], iter_idx)
 
     def memo_inserter(transitions):
+        if transitions['reward'] > 0:
+            print(transitions['reward'])
         memory.push(**transitions)
 
-    env = gym.make("singleBattle-v0")
+    env = gym.make("attackHome-v0")
     # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
     memory = ReplayBuffer(10000)
 
@@ -85,13 +87,17 @@ def self_play(nn_path=None):
     optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
 
     algo = A2C(nn,lr=1e-5, weight_decay=1e-7)
+    update_step = 128
+    
+    step = 0
 
-    frames = 0
-    st = time.time()
     for epi_idx in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset
         start_time = time.time()
         players_G0 = [0, 0]
+        for a in agents:
+            a.forget()
+            
         while not obses_t[0].done:
             actions = []
             for i in range(len(players)):
@@ -107,18 +113,20 @@ def self_play(nn_path=None):
                 #     memory.push(**trans)
             
             obses_tp1 = env.step(actions)
-            frames += 1
-            if frames == 2000:
-                print(frames / (time.time() - st))
+            step += 1
+            if step >= update_step:
+                algo.update(memory, iter_idx, device, logger)
+                step = 0
+
 
             # just for analisis
             for i in range(len(players)):
                 players_G0[i] += obses_tp1[i].reward
 
-            if obses_tp1[0].done:
-                # Get the last transition from env
-                for i in range(len(players)):
-                    action = agents[i].think(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+            # if obses_tp1[0].done:
+            #     # Get the last transition from envSingleAgent
+            #     for i in range(len(players)):
+            #         action = agents[i].think(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
                     # action = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
 
                     # if trans:
@@ -127,14 +135,14 @@ def self_play(nn_path=None):
                 
 
             obses_t = obses_tp1
-            if obses_t[0].reward > 0 or obses_t[1].reward > 0:
-                print(obses_t[0].reward, obses_t[1].reward)
+            # if obses_t[0].reward > 0 or obses_t[1].reward > 0:
+            #     print(obses_t[0].reward, obses_t[1].reward)
             
 
     
 
-        for i in range(len(players)):
-            action = agents[i].think(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+        # for i in range(len(players)):
+        #     action = agents[i].think(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
             # action = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
 
             # if trans:
@@ -145,16 +153,18 @@ def self_play(nn_path=None):
             #     players[i].learn(optimizer=optimizer, iter_idx=iter_idx, batch_size="all", accelerator=device, callback=logger)
             #     iter_idx += 1
             
-        algo.update(memory, iter_idx, device, logger)
+        # algo.update(memory, iter_idx, device, logger)
         iter_idx += 1
 
-        if (epi_idx + 1) % 500 == 0:
+        if (epi_idx + 1) % 5000 == 0:
             torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl" + str(epi_idx) + ".pth"))
 
         print(players_G0)
-        winner = env.get_winner()
-        writer.add_scalar("TimeStamp",obses_t[i].info["time_stamp"], epi_idx)
+        winner = obses_tp1[0].info["winner"]
+
         writer.add_scalar("Return_diff",abs(players_G0[0] - players_G0[1]) , epi_idx)
+        writer.add_scalar("TimeStamp", obses_t[i].info["time_stamp"]  , epi_idx)
+
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
         
     print(env.setup_commands)

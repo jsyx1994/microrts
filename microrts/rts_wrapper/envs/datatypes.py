@@ -274,6 +274,7 @@ class UnitValidAction:
 class GsWrapper:
     gs: GameState
     reward: float
+    winner: int
     validActions: List[UnitValidAction]
     done: Optional[int] = 0 # 0: continue; 1: truly end; 2: time up
 

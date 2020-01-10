@@ -54,7 +54,7 @@ environments = [
                     height=4,
                     width=4,
                     max_cycles=1000,
-                    max_episodes=1000,
+                    max_episodes=1000000,
                 ),
 
             }
@@ -91,7 +91,7 @@ environments = [
                     width=6,
                     # period=20,
                     max_cycles=1000,
-                    max_episodes=1000,
+                    max_episodes=1000000000,
                 ),
 
             }
