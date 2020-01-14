@@ -6,10 +6,10 @@ from microrts.algo.agents import Agent
 from torch.utils.tensorboard import SummaryWriter
 from microrts.algo.replay_buffer import ReplayBuffer
 
-from microrts.rts_wrapper.envs.utils import action_sampler_v2
+from microrts.rts_wrapper.envs.utils import action_sampler_v2, network_simulator
 from microrts.algo.a2c import A2C
 from microrts.rts_wrapper.envs.datatypes import Config
-
+import microrts.settings as settings 
 import os, psutil
 
 def get_config(env_id) -> Config :
@@ -40,7 +40,6 @@ def play(env_id, nn_path=None):
     max_episodes = config.max_episodes
 
     memory = ReplayBuffer(10000)
-    writer = SummaryWriter()
 
     if start_from_scratch:
         nn = ActorCritic(map_size)
@@ -56,8 +55,9 @@ def play(env_id, nn_path=None):
 
     nn.to(device)
 
-    num_process = 8
+    num_process = 1
     envs = make_vec_envs(env_id, num_process, context="fork")
+
 
     import time
 
@@ -79,12 +79,15 @@ def play(env_id, nn_path=None):
     # print(agents[1][0].brain is agents[4][0].brain)
     # print(len(agents))
     # input()
-    update_steps = 10
-    algo = A2C(nn, 1e-5, 1e-7)
+    update_steps = 20
+    algo = A2C(nn, 2e-5, weight_decay=1e-3)
     writer = SummaryWriter()
     iter_idx = 0
+    epi_idx = 0
 
     while 1:
+        # for p in envs.procs:
+        #     print(p.is_alive())
         actions_n = []
         for i in range(num_process):
             action_i = []
@@ -95,6 +98,9 @@ def play(env_id, nn_path=None):
             
             actions_n.append(action_i)
         # _st = time.time()
+        # print(actions_n)
+        # print()
+        # input()
         obses_n = envs.step(actions_n)
         # print(time.time() - _st)
 
@@ -102,20 +108,33 @@ def play(env_id, nn_path=None):
         
         # print(time.time() - st)
         if frames % update_steps == 0:
+            print(memory.__len__())
             algo.update(memory, iter_idx, callback=logger, device=device)
             iter_idx += 1
+        
+        # if memory.__len__() >= update_steps * num_process:
+        #     algo.update(memory, iter_idx, callback=logger, device=device)
+        #     iter_idx += 1
+        
+
 
 
         if frames == 1000:
             print(frames * num_process / (time.time() - st))
             frames = 0
             st = time.time()
+            # torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl.pth"))
+
             
         time_stamp  = []
         for i in range(len(obses_n)):
             for j in range(len(obses_n[i])):
                 # print(obses_n[i][j].done)
                 if obses_n[i][j].done:
+                    epi_idx += 1
+                    if epi_idx % 5000 == 0:
+                        torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl" + str(epi_idx) + ".pth"))
+                    
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
                     agents[i][j].forget()
                     # print("done")
@@ -145,5 +164,5 @@ if __name__ == "__main__":
     # print(p.nice())
     p.nice(10)
     # input()
-    play("singleBattle-v0")
+    play("attackHome-v0")
 

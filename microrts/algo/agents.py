@@ -1,17 +1,20 @@
 
-from microrts.rts_wrapper.envs.utils import action_sampler_v2, get_action_index, action_sampler_v1
+from microrts.rts_wrapper.envs.utils import action_sampler_v2, get_action_index, action_sampler_v1,network_simulator
 
 class Agent:
 
     brain = None
     units_on_working = {}
+    steps = 0
 
 
-    def __init__(self, model):
+    def __init__(self, model, random_rollout_steps=100):
         self.brain = model
+        self.random_rollout_steps = random_rollout_steps
 
     def forget(self):
         self.units_on_working.clear()
+        self.steps = 0
 
     def think(self, callback=None, **kwargs):
         """figure out the action according to helper function and obs, store env related action to itself and \
@@ -48,8 +51,16 @@ class Agent:
         # import time
 
         # st = time.time()
-        player_actions = action_sampler_v2(self.brain, obs, info, device=device)
+        sampler = action_sampler_v2 if self.random_rollout_steps <= self.steps else network_simulator
+        # print(sampler)
+        self.steps += 1
+        player_actions = sampler(
+            info=info,
+            model=self.brain,
+            state=obs,
+            device=device)
         # print(time.time() - st)
+        # print(player_actions)
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in player_actions]
 
         transition = {}

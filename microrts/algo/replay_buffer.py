@@ -38,6 +38,7 @@ class Batches:
                 torch.from_numpy(self.rewards).float().to(device).unsqueeze(1), \
                 done_masks.to(device).unsqueeze(1)
                 # torch.from_numpy(self.done).int().to(device).unsqueeze(1)
+
                 
 
 

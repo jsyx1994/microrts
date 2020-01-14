@@ -41,7 +41,8 @@ def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, ):
     shared memory.
     """
 
-    env = env_fn_wrapper.x()
+    # env = env_fn_wrapper.x()
+    env = env_fn_wrapper()
     parent_pipe.close()
     try:
         while True:
@@ -50,9 +51,6 @@ def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, ):
                 pipe.send(env.reset())
             elif cmd == 'step':
                 obs = env.step(data)
-                # if obs[0].done:
-                #     env.get_winner()
-                #     obs = env.reset()
                 pipe.send(obs)
             # elif cmd == 'getp':
             #     # print("int hitsafsd")
@@ -104,7 +102,7 @@ class ParallelVecEnv(VecEnv):
                 # proc = ctx.Process(target=_subproc_worker,
                 #             args=(child_pipe, parent_pipe, wrapped_fn, obs_buf, self.obs_shapes, self.obs_dtypes, self.obs_keys))
                 proc = ctx.Process(target=_subproc_worker,
-                            args=(child_pipe, parent_pipe, wrapped_fn,))
+                            args=(child_pipe, parent_pipe, env_fn,))
                 proc.daemon = True
                 self.procs.append(proc)
                 self.parent_pipes.append(parent_pipe)
@@ -146,7 +144,9 @@ class ParallelVecEnv(VecEnv):
         You should not call this if a step_async run is
         already pending.
         """
+        assert len(actions) == len(self.parent_pipes)
         for pipe, act in zip(self.parent_pipes, actions):
+            # print(len(act))
             pipe.send(('step', act))
         self.waiting_step = True
 

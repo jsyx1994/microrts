@@ -84,10 +84,10 @@ def self_play(nn_path=None):
 
     # print(players[0].brain is players[1].brain) # True
 
-    optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
+    # optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
 
-    algo = A2C(nn,lr=1e-5, weight_decay=1e-7)
-    update_step = 128
+    algo = A2C(nn,lr=2e-5)
+    update_step = 20
     
     step = 0
 
@@ -137,7 +137,8 @@ def self_play(nn_path=None):
             obses_t = obses_tp1
             # if obses_t[0].reward > 0 or obses_t[1].reward > 0:
             #     print(obses_t[0].reward, obses_t[1].reward)
-            
+        algo.update(memory, iter_idx, device, logger)
+        
 
     
 
@@ -156,7 +157,7 @@ def self_play(nn_path=None):
         # algo.update(memory, iter_idx, device, logger)
         iter_idx += 1
 
-        if (epi_idx + 1) % 5000 == 0:
+        if (epi_idx + 1) % 100 == 0:
             torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl" + str(epi_idx) + ".pth"))
 
         print(players_G0)

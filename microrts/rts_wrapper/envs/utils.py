@@ -13,6 +13,7 @@ from torch.distributions import Categorical
 
 rd = np.random
 rd.seed()
+torch.random.seed()
 
 
 def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callback=None):
@@ -111,7 +112,6 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
 
     
     # st = time.time()
-    
     with torch.no_grad():
         for key in batch_dict:
             if batch_dict[key]:
@@ -129,7 +129,12 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
                 # print(probs.requires_grad)
 
                 m = Categorical(probs)
+                print(probs)
+
                 idxes = m.sample()
+                print(m.sample() == m.sample())
+                # input()
+                print(key)
                 for idx in idxes:
                     actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
 
@@ -209,11 +214,12 @@ def signal_wrapper(raw):
     return observation, reward, done, info
 
 
-def network_simulator(unit_valid_actions: List[UnitValidAction]):
+def network_simulator(info, **args):
     """
     :param unit_valid_actions:
     :return: choice for every unit, adding UVA to check validation later
     """
+    unit_valid_actions = info["unit_valid_actions"]
     unit_validaction_choices = []
     for uva in unit_valid_actions:
         # if uva.unit.type == "Worker":
@@ -310,30 +316,30 @@ def state_encoder(gs: GameState, player):
 
     
     # state-action (not network-action) ecoding, total: 21
-    actions = gs.actions
-    channel_action_type            = np.zeros((7, h, w))
-    channel_action_para            = np.zeros((5, h, w))
-    channel_action_x               = np.zeros((1, h, w))
-    channel_action_y               = np.zeros((1, h, w))
-    channel_action_produce_type    = np.zeros((len(UNIT_COLLECTION), h, w))
-    for action in actions:
-        _id = action.ID
-        _act = action.action
-        _x, _y = id_location_map[_id]
+    # actions = gs.actions
+    # channel_action_type            = np.zeros((7, h, w))
+    # channel_action_para            = np.zeros((5, h, w))
+    # channel_action_x               = np.zeros((1, h, w))
+    # channel_action_y               = np.zeros((1, h, w))
+    # channel_action_produce_type    = np.zeros((len(UNIT_COLLECTION), h, w))
+    # for action in actions:
+    #     _id = action.ID
+    #     _act = action.action
+    #     _x, _y = id_location_map[_id]
 
-        channel_action_type[_act.type][_x][_y] = 1
+    #     channel_action_type[_act.type][_x][_y] = 1
 
-        if 0 <= _act.parameter <= 3:  
-            channel_action_para[_act.parameter] = 1
-        else:
-            channel_action_para[-1] = 1
+    #     if 0 <= _act.parameter <= 3:  
+    #         channel_action_para[_act.parameter] = 1
+    #     else:
+    #         channel_action_para[-1] = 1
         
-        # print(_act.x, _act.y) => -1, -1
-        channel_action_x[0][_x][_y] = _act.x / gs.pgs.width
-        channel_action_y[0][_x][_y] = _act.y / gs.pgs.height
+    #     # print(_act.x, _act.y) => -1, -1
+    #     channel_action_x[0][_x][_y] = _act.x / gs.pgs.width
+    #     channel_action_y[0][_x][_y] = _act.y / gs.pgs.height
 
-        if _act.unitType:
-            channel_action_produce_type[UNIT_COLLECTION.index(_act.unitType)][_x][_y] = 1
+    #     if _act.unitType:
+    #         channel_action_produce_type[UNIT_COLLECTION.index(_act.unitType)][_x][_y] = 1
     
 
 
@@ -352,11 +358,11 @@ def state_encoder(gs: GameState, player):
             channel_my_resources,   # 1
             channel_opp_resources,  # 1
 
-            channel_action_type,    # 7
-            channel_action_para,    # 5
-            channel_action_x,       # 1
-            channel_action_y,       # 1
-            channel_action_produce_type,  # 7
+            # channel_action_type,    # 7
+            # channel_action_para,    # 5
+            # channel_action_x,       # 1
+            # channel_action_y,       # 1
+            # channel_action_produce_type,  # 7
                                     # total 42
         ),
     )

@@ -10,10 +10,10 @@ class A2C:
         ac_model,
         lr=None,
         weight_decay=None,
-        eps=None,
+        eps=1e-5,
         log_interval=100,
         gamma=0.99,
-        entropy_coef=0.01,
+        entropy_coef=.01,
         ):
         self.actor_critic = ac_model
         self.optimizer = optim.RMSprop(ac_model.parameters(), lr)
@@ -21,11 +21,11 @@ class A2C:
 
         self.gamma = gamma
         self.entropy_coef = entropy_coef
-
+        self.eps = eps
         self.log_interval = log_interval
 
 
-    def update(self, rollouts: ReplayBuffer, iter_idx, device="cpu", callback=None ):
+    def update(self, rollouts: ReplayBuffer, iter_idx, device="cpu", callback=None):
         sps_dict = rollouts.sample(batch_size='all')
         nn = self.actor_critic
         optimizer = self.optimizer
@@ -43,6 +43,10 @@ class A2C:
 
                 # if rewards[0][0] > 0:
                 #     print(rewards, actions)
+                # if rewards.size(0) > 1:
+                #     rewards = (rewards - rewards.mean())  / (rewards.std() + 1e-3)
+                # print(rewards)
+                # print(len(rewards))
 
                 value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
 
@@ -56,7 +60,7 @@ class A2C:
                 value_loss = torch.nn.functional.mse_loss(targets, value)
 
                 all_loss = policy_loss.mean() + value_loss.mean() + self.entropy_coef * entropy_loss.mean()
-            
+                # print(all_loss.requires_grad)
                 optimizer.zero_grad()
                 all_loss.backward()
                 optimizer.step()
