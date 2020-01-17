@@ -65,6 +65,8 @@ class ActorCritic(nn.Module):
             nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=2), nn.ReLU(),
             nn.Conv2d(64, 128, 2), nn.ReLU(),
             nn.Conv2d(128, 64, 2), nn.ReLU(),
+            # nn.Conv2d(64, 32, 2), nn.ReLU(),
+
             nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
         )
         self.self_attn = nn.Sequential(
@@ -86,6 +88,7 @@ class ActorCritic(nn.Module):
 
         self.actor_mlps = nn.Sequential(
             nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 256), nn.ReLU(),
+            nn.Linear(256, 256), nn.ReLU(),
             nn.Linear(256, 256), nn.ReLU(),
         )
 
@@ -137,7 +140,7 @@ class ActorCritic(nn.Module):
 
     def _shared_forward(self, spatial_feature):
         x = self.shared_conv(spatial_feature)
-        x = self.self_attn(x)
+        # x = self.self_attn(x)
         # print(x.shape)
         x = self.shared_linear(x)
         return x

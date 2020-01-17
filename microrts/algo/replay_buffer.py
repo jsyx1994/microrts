@@ -29,7 +29,7 @@ class Batches:
     done: np.array
     def to(self,device):
         done_masks = torch.FloatTensor(
-                    [0.0 if _done == 1 else 1.0 for _done in self.done]
+                    [0.0 if _done==1  else 1.0 for _done in self.done]
                 )
         return  torch.from_numpy(self.states).float().to(device), \
                 torch.from_numpy(self.units).float().to(device), \

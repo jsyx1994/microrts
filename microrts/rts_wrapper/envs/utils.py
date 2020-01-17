@@ -15,6 +15,12 @@ rd = np.random
 rd.seed()
 torch.random.seed()
 
+def get_config(env_id) -> Config :
+        from microrts.rts_wrapper import environments
+        for registered in environments:
+            if registered["id"] == env_id:
+                return registered['kwargs']['config']
+
 
 def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callback=None):
     """(Deprecated) Sample actions from one game state at time t for all units player i owns
@@ -129,12 +135,12 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
                 # print(probs.requires_grad)
 
                 m = Categorical(probs)
-                print(probs)
+                # print(probs)
 
                 idxes = m.sample()
-                print(m.sample() == m.sample())
+                # print(m.sample() == m.sample())
                 # input()
-                print(key)
+                # print(key)
                 for idx in idxes:
                     actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
 
@@ -228,6 +234,8 @@ def network_simulator(info, **args):
         choice = rd.choice(list(AGENT_ACTIONS_MAP[uva.unit.type]))
         # (choice) BaseAction.DO_NONE.name, BaseAction.DO_NONE.value
         unit_validaction_choices.append((uva, choice))
+    # print(unit_validaction_choices)
+    # input()
     return unit_validaction_choices
 
 
@@ -754,12 +762,17 @@ def unit_feature_encoder(unit:Unit, map_size:list):
 
     x_ratio_feature = np.array([unit_x / map_width])
     y_ratio_feature = np.array([unit_y / map_height])
+
+    # x_absolute_feature = np.array([unit_x])
+    # y_absolute_feature = np.array([unit_y])
     resource_feature = resource_encoder(unit_resource)
     hp_ratio_feature = np.array([unit_hp / UTT_DICT[unit_type].hp])
 
     unit_feature = np.hstack(
         (
             type_feature,
+            # x_absolute_feature,
+            # y_absolute_feature,
             x_ratio_feature,
             y_ratio_feature,
             resource_feature,

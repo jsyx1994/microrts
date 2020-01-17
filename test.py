@@ -65,7 +65,7 @@ def self_play(nn_path=None):
     start_from_scratch = nn_path is None
     
     players = env.players
-
+ 
     if start_from_scratch:
         nn = ActorCritic(env.map_size)
     else:
@@ -86,7 +86,7 @@ def self_play(nn_path=None):
 
     # optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
 
-    algo = A2C(nn,lr=2e-5)
+    algo = A2C(nn,lr=4e-5, weight_decay=1e-7)
     update_step = 20
     
     step = 0
@@ -122,39 +122,10 @@ def self_play(nn_path=None):
             # just for analisis
             for i in range(len(players)):
                 players_G0[i] += obses_tp1[i].reward
-
-            # if obses_tp1[0].done:
-            #     # Get the last transition from envSingleAgent
-            #     for i in range(len(players)):
-            #         action = agents[i].think(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
-                    # action = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
-
-                    # if trans:
-                    #     print(obses_tp1[0].done)
-                    #     memory.push(**trans)
-                
+            if obses_tp1[0].done:
+                print(obses_tp1[0].reward)
 
             obses_t = obses_tp1
-            # if obses_t[0].reward > 0 or obses_t[1].reward > 0:
-            #     print(obses_t[0].reward, obses_t[1].reward)
-        algo.update(memory, iter_idx, device, logger)
-        
-
-    
-
-        # for i in range(len(players)):
-        #     action = agents[i].think(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
-            # action = players[i].think(obses=obses_tp1[i], accelerator=device, mode="train")
-
-            # if trans:
-            #     print(obses_tp1[0].done)
-            #     memory.push(**trans)
-            
-            # for i in range(len(players)):
-            #     players[i].learn(optimizer=optimizer, iter_idx=iter_idx, batch_size="all", accelerator=device, callback=logger)
-            #     iter_idx += 1
-            
-        # algo.update(memory, iter_idx, device, logger)
         iter_idx += 1
 
         if (epi_idx + 1) % 100 == 0:
@@ -174,9 +145,6 @@ def self_play(nn_path=None):
 
 
 if __name__ == '__main__':
-    # from microrts.settings import models_dir
-    # import os
-    # self_play(nn_path=os.path.join(models_dir, "rl.pth"))
+    torch.manual_seed(0)
     # self_play()
-    # evaluate()
-    self_play()
+    self_play(nn_path=os.path.join(settings.models_dir, "rl999.pth"))

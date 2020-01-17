@@ -69,4 +69,4 @@ def evaluate(nn_path=None):
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
 
 if __name__ == "__main__":
-    evaluate(nn_path=os.path.join(settings.models_dir, "rl299.pth"))
+    evaluate(nn_path=os.path.join(settings.models_dir, "rl99.pth"))

@@ -7,7 +7,9 @@ from baselines.common.vec_env.vec_env import CloudpickleWrapper, clear_mpi_env_v
 
 from microrts.algo.model import ActorCritic
 from microrts.algo.utils import load_model
-
+from microrts.algo.agents import Agent
+from .utils import get_config
+import time
 
 def make_env(env_id):
     def _thunk():
@@ -18,7 +20,7 @@ def make_env(env_id):
     return _thunk
 
 
-def make_vec_envs(env_id, num_processes, context):
+def make_vec_envs(env_id, num_processes, context, model):
     
     assert num_processes > 0, "Can not make no env!"
     envs = [make_env(env_id) for i in range(num_processes)]
@@ -28,21 +30,30 @@ def make_vec_envs(env_id, num_processes, context):
     # env2 = envs[2]().players[0].brain
     
     # input()
+    config = get_config(env_id)
+    nagents = 2 if config.self_play else 1
+
+    agents = [[Agent(model) for _ in range(nagents)] for _ in range(num_processes)]
+    # for i in range(num_processes):
+    #     for j in range(nagents):
+
 
     envs = ParallelVecEnv(envs, context=context)
-    return envs
+    return envs, agents
 
 
 # def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, obs_bufs, obs_shapes, obs_dtypes, keys):
-def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, ):
+def _subproc_worker(pipe, parent_pipe, env_fn_wrapper):
 
     """
     Control a single environment instance using IPC and
     shared memory.
     """
 
-    # env = env_fn_wrapper.x()
-    env = env_fn_wrapper()
+    env = env_fn_wrapper.x()
+    # print(env)
+    # sleep(5)
+    # env = env_fn_wrapper()
     parent_pipe.close()
     try:
         while True:
@@ -51,6 +62,14 @@ def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, ):
                 pipe.send(env.reset())
             elif cmd == 'step':
                 obs = env.step(data)
+                # if obs[0].reward > 0:
+                #     print(obs[0].reward)
+                # if obs[0].done:
+                #     obs = env.reset()
+                #     for agent in agents_process:
+                #         # print(agent)
+                #         # time.sleep(5)
+                #         agent.forget()
                 pipe.send(obs)
             # elif cmd == 'getp':
             #     # print("int hitsafsd")
@@ -73,7 +92,7 @@ def _subproc_worker(pipe, parent_pipe, env_fn_wrapper, ):
 class ParallelVecEnv(VecEnv):
     """[summary]
     """
-    def __init__(self, env_fns, context='spawn'):
+    def __init__(self, env_fns, context='spawn', ):
         self.waiting_step = False
         self.closed  = False
                 
@@ -96,13 +115,13 @@ class ParallelVecEnv(VecEnv):
         self.parent_pipes = []
         self.procs = []
         with clear_mpi_env_vars():
-            for env_fn in env_fns:
+            for i, env_fn in enumerate(env_fns):
                 wrapped_fn = CloudpickleWrapper(env_fn)
                 parent_pipe, child_pipe = ctx.Pipe()
                 # proc = ctx.Process(target=_subproc_worker,
                 #             args=(child_pipe, parent_pipe, wrapped_fn, obs_buf, self.obs_shapes, self.obs_dtypes, self.obs_keys))
                 proc = ctx.Process(target=_subproc_worker,
-                            args=(child_pipe, parent_pipe, env_fn,))
+                            args=(child_pipe, parent_pipe, wrapped_fn))
                 proc.daemon = True
                 self.procs.append(proc)
                 self.parent_pipes.append(parent_pipe)

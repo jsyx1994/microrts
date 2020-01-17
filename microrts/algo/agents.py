@@ -8,7 +8,7 @@ class Agent:
     steps = 0
 
 
-    def __init__(self, model, random_rollout_steps=100):
+    def __init__(self, model, random_rollout_steps=20):
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
 
@@ -51,8 +51,9 @@ class Agent:
         # import time
 
         # st = time.time()
-        sampler = action_sampler_v2 if self.random_rollout_steps <= self.steps else network_simulator
+        # sampler = action_sampler_v1 if self.random_rollout_steps <= self.steps else network_simulator
         # print(sampler)
+        sampler = action_sampler_v2
         self.steps += 1
         player_actions = sampler(
             info=info,

@@ -12,7 +12,7 @@ class A2C:
         weight_decay=None,
         eps=1e-5,
         log_interval=100,
-        gamma=0.99,
+        gamma=0.9,
         entropy_coef=.01,
         ):
         self.actor_critic = ac_model
@@ -49,20 +49,22 @@ class A2C:
                 # print(len(rewards))
 
                 value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
-
+                print(value)
                 value_next = nn.critic_forward(next_states)
 
-                targets = rewards + self.gamma * done_masks * value_next 
+                targets = rewards  + self.gamma  * value_next * done_masks
                 
                 pi_sa = probs.gather(1, actions)
                 entropy_loss = - probs * torch.log(probs + 1e-7)
                 policy_loss = - torch.log(pi_sa + 1e-7) * (targets - value)
                 value_loss = torch.nn.functional.mse_loss(targets, value)
 
-                all_loss = policy_loss.mean() + value_loss.mean() + self.entropy_coef * entropy_loss.mean()
+                all_loss = policy_loss.mean() + value_loss.mean()  + self.entropy_coef * entropy_loss.mean()
                 # print(all_loss.requires_grad)
                 optimizer.zero_grad()
                 all_loss.backward()
+
+                torch.nn.utils.clip_grad_norm_(self.actor_critic.parameters(), .5)
                 optimizer.step()
 
                 results = {
