@@ -5,8 +5,10 @@ import microrts.settings as settings
 from microrts.algo.utils import load_model
 from microrts.algo.model import ActorCritic
 from microrts.algo.agents import Agent
+from microrts.rts_wrapper.envs.utils import get_config
+import argparse
 
-def evaluate(nn_path=None):
+def evaluate(env_id, ai2_type="socketAI", nn_path=None):
     """self play program
     
     Arguments:
@@ -18,7 +20,12 @@ def evaluate(nn_path=None):
     #         writer.add_scalar(k, results[k], iter_idx)
 
     # env = gym.make("Evalbattle2v2LightMelee-v0")
-    env = gym.make("EvalattackHome-v0")
+
+    config = get_config(env_id)
+    # print(config)
+    # input()
+    config.ai2_type = ai2_type
+    env = gym.make(env_id)
     # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
 
     start_from_scratch = nn_path is None
@@ -54,6 +61,8 @@ def evaluate(nn_path=None):
                 # actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
                 # _st = time.time()
                 action = agents[i].think(obses=obses_t[i], accelerator=device,mode="eval")
+                print(action)
+                input()
                 # input()
                 # print((time.time() - _st))
 
@@ -69,4 +78,8 @@ def evaluate(nn_path=None):
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
 
 if __name__ == "__main__":
-    evaluate(nn_path=os.path.join(settings.models_dir, "rl99.pth"))
+    parser = argparse.ArgumentParser()
+    parser.add_argument('m_path')
+    args = parser.parse_args()
+
+    evaluate("EvalsingleBattle-v0","Random", nn_path=os.path.join(settings.models_dir, args.m_path))

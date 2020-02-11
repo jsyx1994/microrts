@@ -12,20 +12,24 @@ class A2C:
         weight_decay=None,
         eps=1e-5,
         log_interval=100,
-        gamma=0.9,
+        gamma=0.99,
         entropy_coef=.01,
+        value_loss_coef=1
         ):
         self.actor_critic = ac_model
-        self.optimizer = optim.RMSprop(ac_model.parameters(), lr)
-        # self.optimizer = optim.Adam(ac_model.parameters(), lr)
+        # self.optimizer = optim.RMSprop(ac_model.parameters(), lr, weight_decay=weight_decay)
+        self.optimizer = optim.Adam(ac_model.parameters(), lr, weight_decay=weight_decay)
 
         self.gamma = gamma
         self.entropy_coef = entropy_coef
+        self.value_loss_coef = value_loss_coef
         self.eps = eps
         self.log_interval = log_interval
 
 
     def update(self, rollouts: ReplayBuffer, iter_idx, device="cpu", callback=None):
+        if rollouts.__len__() <= 0:
+            return 
         sps_dict = rollouts.sample(batch_size='all')
         nn = self.actor_critic
         optimizer = self.optimizer
@@ -37,31 +41,34 @@ class A2C:
             if sps_dict[key]:
                 states, units, actions, next_states, rewards,  done_masks = sps_dict[key].to(device)
 
-                # done_masks = torch.FloatTensor(
-                #     [[0.0] if _done == 1 else [1.0] for _done in done]
-                # )
-
-                # if rewards[0][0] > 0:
-                #     print(rewards, actions)
-                # if rewards.size(0) > 1:
-                #     rewards = (rewards - rewards.mean())  / (rewards.std() + 1e-3)
-                # print(rewards)
-                # print(len(rewards))
-
                 value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
+                # m = torch.distributions.Categorical(probs=probs)
                 print(value)
-                value_next = nn.critic_forward(next_states)
+                value_next = nn.critic_forward(next_states).detach()
 
-                targets = rewards  + self.gamma  * value_next * done_masks
-                
+                targets = (rewards + self.gamma  * value_next * done_masks)
+
+                advantages = targets - value.detach()
                 pi_sa = probs.gather(1, actions)
-                entropy_loss = - probs * torch.log(probs + 1e-7)
-                policy_loss = - torch.log(pi_sa + 1e-7) * (targets - value)
-                value_loss = torch.nn.functional.mse_loss(targets, value)
+                # print(m.entropy())
+                # input()
+                # entropy = (probs * torch.log(probs)).mean()
+                # print(entropy)
+                # input()
+                entropy_loss = (probs * torch.log(probs)).mean()
+                # print(m.logits)
+                # input()
+                # entropy_loss = -m.entropy().mean()
 
-                all_loss = policy_loss.mean() + value_loss.mean()  + self.entropy_coef * entropy_loss.mean()
-                # print(all_loss.requires_grad)
+                policy_loss = -(torch.log(pi_sa + self.eps) * advantages).mean()
+                criteria= torch.nn.MSELoss()
+                value_loss = criteria(value, targets)
+
+
                 optimizer.zero_grad()
+                all_loss = policy_loss + value_loss * self.value_loss_coef  + self.entropy_coef * entropy_loss
+
+                # all_loss = value_loss * self.value_loss_coef + policy_loss - dist_entropy * self.entropy_coef
                 all_loss.backward()
 
                 torch.nn.utils.clip_grad_norm_(self.actor_critic.parameters(), .5)

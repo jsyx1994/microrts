@@ -80,10 +80,11 @@ class BattleEnv(BaseEnv):
         Returns:
             [type] -- [description]
         """
+        # print("env reset")
         signals = [self._obs2dataclass(player.reset()) for player in self.players]
         
-        for p in self.players:
-            p.forget()
+        # for p in self.players:
+        #     p.forget()
             
         return signals
 

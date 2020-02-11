@@ -9,7 +9,11 @@ from microrts.rts_wrapper.envs.datatypes import *
 from torch.distributions import Categorical
 from microrts.rts_wrapper.envs.utils import encoded_utt_feature_size
 
-
+def init(module, weight_init, bias_init, gain=1):
+    weight_init(module.weight.data, gain=gain)
+    bias_init(module.bias.data)
+    return module
+    
 class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
@@ -38,7 +42,7 @@ class NNBase(nn.Module):
 
 class ActorCritic(nn.Module):
 
-    def __init__(self, map_size, input_channel=21, unit_feature_size=18):
+    def __init__(self, map_size, input_channel=31, unit_feature_size=20):
         """[summary]
         
         Arguments:
@@ -52,6 +56,7 @@ class ActorCritic(nn.Module):
         map_height, map_width = map_size
         self.shared_out_size = 256
 
+
         self.activated_agents = [
             UNIT_TYPE_NAME_BASE,
             # UNIT_TYPE_NAME_BARRACKS,
@@ -61,35 +66,49 @@ class ActorCritic(nn.Module):
             # UNIT_TYPE_NAME_RANGED,
         ]
 
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=2), nn.ReLU(),
-            nn.Conv2d(64, 128, 2), nn.ReLU(),
-            nn.Conv2d(128, 64, 2), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)), nn.ReLU(),
+            init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
 
-            nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
+            # nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
         )
         self.self_attn = nn.Sequential(
             Pic2Vector(),
-            nn.TransformerEncoder(encoder_layer=nn.TransformerEncoderLayer(d_model=64, nhead=8), num_layers=1), nn.ReLU()
+            nn.TransformerEncoder(encoder_layer=nn.TransformerEncoderLayer(d_model=32, nhead=4), num_layers=1), nn.ReLU()
         )
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0))
         self.shared_linear = nn.Sequential(
             Flatten(),
-            nn.Linear(64 * map_height * map_width, 512), nn.ReLU(),
-            nn.Linear(512, self.shared_out_size), nn.ReLU(),
+            init_(nn.Linear(16 * map_height * map_width, 256)), nn.ReLU(),
+            init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(256, self.shared_out_size)), nn.ReLU(),
         )
+
+        # self.shared_to_actor = nn.Sequential(
+        #     init_(nn.Linear(self.shared_out_size, self.catter_size)), nn.ReLU(),
+        #     # init_(nn.Linear(128, self.catter_size)), nn.ReLU(),
+        # )
 
         self.critic_mlps = nn.Sequential(
-            nn.Linear(256, 128), nn.ReLU(),
-            nn.Linear(128, 64), nn.ReLU(),
-            nn.Linear(64, 32), nn.ReLU(),
+            init_(nn.Linear(self.shared_out_size, 256)), nn.ReLU(),
+            init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(256, 256)), nn.ReLU(),
+
         )
-        self.critic_out = nn.Linear(32, 1)
+        self.critic_out = init_(nn.Linear(256, 1))
 
         self.actor_mlps = nn.Sequential(
-            nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 256), nn.ReLU(),
-            nn.Linear(256, 256), nn.ReLU(),
-            nn.Linear(256, 256), nn.ReLU(),
+            init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 256)), nn.ReLU(),
+            init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(256, 256)), nn.ReLU(),
         )
 
         self.actor_out = nn.ModuleDict({
@@ -114,12 +133,11 @@ class ActorCritic(nn.Module):
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_LIGHT: nn.Sequential(
-                nn.Linear(256, 128), nn.ReLU(),
-                nn.Linear(128, 64), nn.ReLU(),
-                nn.Linear(64, 64), nn.ReLU(),
-                nn.Linear(64, 64), nn.ReLU(),
-                nn.Linear(64, 32), nn.ReLU(),
-                nn.Linear(32, LightAction.__members__.items().__len__()),
+                # init_(nn.Linear(256, 256)), nn.ReLU(),
+                init_(nn.Linear(256, 256)), nn.ReLU(),
+                init_(nn.Linear(256, 256)), nn.ReLU(),
+                init_(nn.Linear(256, 256)), nn.ReLU(),
+                init_(nn.Linear(256, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_HEAVY: nn.Sequential(
@@ -141,8 +159,10 @@ class ActorCritic(nn.Module):
     def _shared_forward(self, spatial_feature):
         x = self.shared_conv(spatial_feature)
         # x = self.self_attn(x)
-        # print(x.shape)
+
         x = self.shared_linear(x)
+        # print(x.shape)
+        # input()
         return x
 
     def evaluate(self, spatial_feature: Tensor):
@@ -161,11 +181,23 @@ class ActorCritic(nn.Module):
     def actor_forward(self, actor_type: str, spatial_feature: Tensor, unit_feature: Tensor):
 
         x = self._shared_forward(spatial_feature)
+        # x = self.shared_to_actor(x)
 
         x = torch.cat([x, unit_feature], dim=1)
         x = self.actor_mlps(x)
         probs = self.actor_out[actor_type](x)
         return probs
+    
+    def evaluate_actions(self, actor_type: str, states: Tensor, unit_feature: Tensor, actions):
+        x = self._shared_forward(states)
+        value = self.critic_out(self.critic_mlps(x))
+        x = torch.cat([x, unit_feature], dim=1)
+        x = self.actor_mlps(x) 
+        dist = Categorical(logits=x)
+        action_log_probs = dist.log_prob(actions)
+        dist_entropy = dist.entropy().mean()
+        return value, action_log_probs, dist_entropy
+
 
     def deterministic_action_sampler(self, actor_type: str, spatial_feature: Tensor, unit_feature: Tensor):
         if actor_type not in self.activated_agents:

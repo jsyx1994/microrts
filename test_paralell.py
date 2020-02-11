@@ -10,7 +10,7 @@ from microrts.rts_wrapper.envs.utils import action_sampler_v2, network_simulator
 from microrts.algo.a2c import A2C
 from microrts.rts_wrapper.envs.datatypes import Config
 import microrts.settings as settings 
-import os, psutil
+import os
 
 def get_config(env_id) -> Config :
         from microrts.rts_wrapper import environments
@@ -55,7 +55,7 @@ def play(env_id, nn_path=None):
 
     nn.to(device)
 
-    num_process = 8
+    num_process = 2
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
 
 

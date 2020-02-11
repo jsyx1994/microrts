@@ -111,7 +111,7 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
             for uva in uva_dict[key]:
                 u = uva.unit
                 states.append(state)
-                units.append(np.hstack((unit_feature_encoder(u, map_size),encoded_utt_dict[u.type])))
+                units.append(np.hstack((unit_feature_encoder(u, map_size), encoded_utt_dict[u.type])))
             
             batch_dict[key] = (np.array(states), np.array(units))
     # print(1, time.time() - st)
@@ -134,8 +134,12 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
                 probs= model.actor_forward(key, states, units)
                 # print(probs.requires_grad)
 
+                # m = Categorical(logits=logits)
                 m = Categorical(probs)
-                # print(probs)
+                
+                # print(state)
+                print(probs)
+                # input()
 
                 idxes = m.sample()
                 # print(m.sample() == m.sample())
@@ -203,7 +207,7 @@ def signal_wrapper(raw):
     # gs_wrapper = GsWrapper(**json.loads(raw.split('\n')[1]))
     # print(raw)
     # input()
-    observation = state_encoder(gs_wrapper.gs, curr_player)
+    observation = state_encoder_v1(gs_wrapper.gs, curr_player)
     reward = gs_wrapper.reward
     done = gs_wrapper.done
     # self.game_time = gs_wrapper.gs.time
@@ -298,7 +302,11 @@ def state_encoder(gs: GameState, player):
     channel_hp_ratio = np.zeros((1, h, w))
     channel_resource = np.zeros((8, h, w))
 
-    channel_is_ally = np.zeros((2, h, w))
+    channel_can_control = np.zeros((1, h, w))
+    channel_cannnot_control = np.full((1, h, w), fill_value=1)
+    channel_is_ally = np.zeros((1,h, w))
+    channel_controller_player = np.full((1, h, w), fill_value=current_player)
+
 
     channel_my_resources = np.full((1, h, w), fill_value=my_resources)
     channel_opp_resources = np.full((1, h, w), fill_value=opp_resources)
@@ -313,10 +321,14 @@ def state_encoder(gs: GameState, player):
         _id = unit.ID
         _one_hot_resource_pos = list(resource_encoder(_resource_carried)).index(1)
         _one_hot_type_pos = UNIT_COLLECTION.index(_type)
-        _one_hot_is_ally_pos = int((current_player == _owner))
+        _one_hot_can_control = current_player == _owner
+        _is_ally = int(current_player == _owner)
         # channel_is_ally[_player][_x][_y] = 1
         channel_hp_ratio[0][_x][_y] = _hp / UTT_DICT[_type].hp
-        channel_is_ally[_one_hot_is_ally_pos][_x][_y] = 1
+        if _one_hot_can_control:
+            channel_can_control[0][_x][_y] = 1
+            channel_cannnot_control[0][_x][_y] = 0
+        channel_is_ally[0][_x][_y] = _is_ally
         channel_type[_one_hot_type_pos][_x][_y] = 1
         channel_resource[_one_hot_resource_pos][_x][_y] = 1
 
@@ -350,14 +362,11 @@ def state_encoder(gs: GameState, player):
     #         channel_action_produce_type[UNIT_COLLECTION.index(_act.unitType)][_x][_y] = 1
     
 
-
-
-    
-
-
     spatial_features = np.vstack(
         (
-            channel_is_ally,        # 2
+            # channel_is_ally,        # 1
+            channel_can_control,
+            channel_cannnot_control,
             channel_type,           # 7
             channel_resource,       # 8
             channel_hp_ratio,       # 1
@@ -365,6 +374,7 @@ def state_encoder(gs: GameState, player):
 
             channel_my_resources,   # 1
             channel_opp_resources,  # 1
+            # channel_controllrer_player, # 1
 
             # channel_action_type,    # 7
             # channel_action_para,    # 5
@@ -374,6 +384,201 @@ def state_encoder(gs: GameState, player):
                                     # total 42
         ),
     )
+    return spatial_features
+
+def state_encoder_v1(gs: GameState, player):
+    """Encode the state for player given Game state from java
+    
+    Arguments:
+        gs {GameState} -- Game state from java
+        player {int} -- current player
+    
+    Returns:
+        np.array -- features
+    """
+    current_player = player
+    # AGENT_COLLECTION
+    pgs = gs.pgs
+    w = pgs.width
+    h = pgs.height
+    units = pgs.units
+    p1_info, p2_info = gs.pgs.players
+    my_resources  = p1_info.resources if current_player == p1_info.ID else p2_info.resources
+    opp_resources = p2_info.resources if current_player == p1_info.ID else p1_info.resources
+
+    # whether the box  walkable
+    # channel_whether_walkable = np.zeros((2, h, w))
+    cannot_walk = []
+    can_walk = []
+    for x in pgs.terrain:
+        if int(x) == 0:
+            cannot_walk.append(0)
+            can_walk.append(1)
+        else:
+            cannot_walk.append(1)
+            can_walk.append(0)
+    channel_whether_walkable = np.array([cannot_walk, cannot_walk]).reshape((2, h, w))
+
+    # channel_terrain = np.array([int(x) for x in pgs.terrain]).reshape((1, h, w))
+
+    # resource number in the box (Discretized)
+    channel_resource_size = np.zeros((8, h, w))
+    
+    # whether is a resource
+    channel_whether_resource = np.zeros((2, h, w))
+
+    # whether is a Base
+    channel_whether_base = np.zeros((2, h, w))
+
+    # whether is a Barracks
+    channel_whether_barracks = np.zeros((2, h, w))
+
+    # whether is a Worker
+    channel_whether_worker = np.zeros((2, h, w))
+
+    # whether is a Light
+    channel_whether_light = np.zeros((2, h, w))
+
+    # whether is a Heavy
+    channel_whether_heavy = np.zeros((2, h, w))
+    
+    # whether is a Range
+    channel_whether_range = np.zeros((2, h, w))
+
+    # whether my units occupy the box?
+    channel_whether_mine = np.zeros((2, h, w))
+
+    # Who am I?
+    channel_player = np.zeros((2, h, w))
+
+    # channel_type = np.zeros((len(UNIT_COLLECTION), h, w)) 
+    channel_hp_ratio = np.zeros((1, h, w))
+
+    # channel_can_control = np.zeros((1, h, w))
+    # channel_cannnot_control = np.full((1, h, w), fill_value=1)
+
+    channel_my_resources = np.full((1, h, w), fill_value=my_resources)
+    channel_opp_resources = np.full((1, h, w), fill_value=opp_resources)
+
+    id_location_map = {}
+    for unit in units:
+        _owner = unit.player
+        _type = unit.type
+        _x, _y = unit.x, unit.y
+        _resource_carried = unit.resources
+        _hp = unit.hitpoints
+        _id = unit.ID
+        _one_hot_resource_pos = list(resource_encoder(_resource_carried)).index(1)
+        channel_hp_ratio[0][_x][_y] = _hp / UTT_DICT[_type].hp
+        channel_resource_size[_one_hot_resource_pos][_x][_y] = 1
+
+        if _type == UNIT_TYPE_NAME_RESOURCE:
+            channel_whether_resource[1][_x][_y] = 1
+        else:
+            channel_whether_resource[0][_x][_y] = 1
+        
+        if _type == UNIT_TYPE_NAME_BASE:
+            channel_whether_base[1][_x][_y] = 1
+        else:
+            channel_whether_base[0][_x][_y] = 1
+        
+        if _type == UNIT_TYPE_NAME_BARRACKS:
+            channel_whether_barracks[1][_x][_y] = 1
+        else:
+            channel_whether_barracks[0][_x][_y] = 1
+        
+        if _type == UNIT_TYPE_NAME_WORKER:
+            channel_whether_worker[1][_x][_y] = 1
+        else:
+            channel_whether_worker[0][_x][_y] = 1
+
+        if _type == UNIT_TYPE_NAME_LIGHT:
+            channel_whether_light[1][_x][_y] = 1
+        else:
+            channel_whether_light[0][_x][_y] = 1
+        
+        if _type == UNIT_TYPE_NAME_HEAVY:
+            channel_whether_heavy[1][_x][_y] = 1
+        else:
+            channel_whether_heavy[0][_x][_y] = 1
+
+        if _type == UNIT_TYPE_NAME_RANGED:
+            channel_whether_range[1][_x][_y] = 1
+        else:
+            channel_whether_range[0][_x][_y] = 1
+
+        if _owner == current_player:
+            channel_whether_mine[1][_x][_y] = 1
+        else:
+            channel_whether_mine[0][_x][_y] = 1
+
+        if current_player == 1:
+            channel_player[1][_x][_y] = 1
+        else:
+            channel_player[0][_x][_y] = 1
+
+
+        id_location_map[_id] = _x, _y
+
+    
+    # state-action (not network-action) ecoding, total: 21
+    # actions = gs.actions
+    # channel_action_type            = np.zeros((7, h, w))
+    # channel_action_para            = np.zeros((5, h, w))
+    # channel_action_x               = np.zeros((1, h, w))
+    # channel_action_y               = np.zeros((1, h, w))
+    # channel_action_produce_type    = np.zeros((len(UNIT_COLLECTION), h, w))
+    # for action in actions:
+    #     _id = action.ID
+    #     _act = action.action
+    #     _x, _y = id_location_map[_id]
+
+    #     channel_action_type[_act.type][_x][_y] = 1
+
+    #     if 0 <= _act.parameter <= 3:  
+    #         channel_action_para[_act.parameter] = 1
+    #     else:
+    #         channel_action_para[-1] = 1
+        
+    #     # print(_act.x, _act.y) => -1, -1
+    #     channel_action_x[0][_x][_y] = _act.x / gs.pgs.width
+    #     channel_action_y[0][_x][_y] = _act.y / gs.pgs.height
+
+    #     if _act.unitType:
+    #         channel_action_produce_type[UNIT_COLLECTION.index(_act.unitType)][_x][_y] = 1
+    
+
+    spatial_features = np.vstack(
+        (
+            channel_whether_walkable, # 2
+            channel_whether_resource, # 8
+            channel_whether_base,     # 2
+            channel_whether_barracks, # 2
+            channel_whether_worker,   # 2
+            channel_whether_light,    # 2
+            channel_whether_heavy,    # 2
+            channel_whether_range,    # 2
+
+            channel_whether_mine,     # 2
+            channel_resource_size,    # 2
+
+            channel_hp_ratio,         # 1
+            channel_my_resources,     # 1
+            channel_opp_resources,    # 1
+            
+            channel_player,           # 2
+            # 31
+
+            # channel_action_type,    # 7
+            # channel_action_para,    # 5
+            # channel_action_x,       # 1
+            # channel_action_y,       # 1
+            # channel_action_produce_type,  # 7
+                                    # total 42
+        ),
+    )
+    # print(spatial_features.shape)
+    # input()
     return spatial_features
 
 
@@ -751,11 +956,15 @@ def resource_encoder(amount, feature_length=8, amount_threshold=2):
 def unit_feature_encoder(unit:Unit, map_size:list):
     map_height, map_width = map_size
 
+    owner = unit.player
     unit_type = unit.type
     unit_x = unit.x
     unit_y = unit.y
     unit_resource = unit.resources
     unit_hp = unit.hitpoints
+
+    owner_feature = np.zeros(2)
+    owner_feature[owner] = 1
 
     type_feature = np.zeros(len(UNIT_COLLECTION))
     type_feature[UNIT_COLLECTION.index(unit_type)] = 1
@@ -763,13 +972,14 @@ def unit_feature_encoder(unit:Unit, map_size:list):
     x_ratio_feature = np.array([unit_x / map_width])
     y_ratio_feature = np.array([unit_y / map_height])
 
-    # x_absolute_feature = np.array([unit_x])
-    # y_absolute_feature = np.array([unit_y])
+    x_absolute_feature = np.array([unit_x])
+    y_absolute_feature = np.array([unit_y])
     resource_feature = resource_encoder(unit_resource)
     hp_ratio_feature = np.array([unit_hp / UTT_DICT[unit_type].hp])
 
     unit_feature = np.hstack(
         (
+            owner_feature,
             type_feature,
             # x_absolute_feature,
             # y_absolute_feature,

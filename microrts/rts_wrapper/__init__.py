@@ -86,9 +86,9 @@ environments = [
                 'config': Config(
                     ai1_type='socketAI',
                     ai2_type='socketAI',
-                    map_path=os.path.join(settings.map_dir, '6x6/singleBattle6x6.xml'),
-                    height=6,
-                    width=6,
+                    map_path=os.path.join(settings.map_dir, '4x4/singleBattle4x4.xml'),
+                    height=4,
+                    width=4,
                     self_play=True,
                     # period=20,
                     max_cycles=1000,
@@ -142,7 +142,7 @@ environments = [
 
 ]
 
-
+eval_envs = []
 for env in environments:
     # env for training 
     env["kwargs"]["config"].render=0
@@ -159,12 +159,14 @@ for env in environments:
     eval_env["kwargs"]["config"].period=20
     eval_env["id"] = "Eval" + eval_env["id"]
     # print(env["id"])
+    eval_envs.append(eval_env)
     register(
         id=eval_env["id"],
         entry_point=eval_env["entry_point"],
         kwargs=eval_env["kwargs"]
     )
 
+environments.extend(eval_envs)
 
 # register(
 #     id='CurriculumBaseWorker-v0',
