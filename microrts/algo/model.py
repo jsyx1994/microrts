@@ -18,6 +18,16 @@ class Flatten(nn.Module):
     def forward(self, x):
         return x.view(x.size(0), -1)
 
+class Maxout(nn.Module):
+    def __init__(self, pool_size):
+        super().__init__()
+        self._pool_size = pool_size
+
+    def forward(self, x):
+        assert x.shape[1] % self._pool_size == 0, \
+            'Wrong input last dim size ({}) for Maxout({})'.format(x.shape[1], self._pool_size)
+        m, i = x.view(*x.shape[:1], x.shape[1] // self._pool_size, self._pool_size, *x.shape[2:]).max(2)
+        return m
 
 class Pic2Vector(nn.Module):
     """
@@ -42,7 +52,7 @@ class NNBase(nn.Module):
 
 class ActorCritic(nn.Module):
 
-    def __init__(self, map_size, input_channel=31, unit_feature_size=20):
+    def __init__(self, map_size, input_channel=74, unit_feature_size=20):
         """[summary]
         
         Arguments:
@@ -54,7 +64,7 @@ class ActorCritic(nn.Module):
         """
         super(ActorCritic, self).__init__()
         map_height, map_width = map_size
-        self.shared_out_size = 256
+        self.shared_out_size = 64
 
 
         self.activated_agents = [
@@ -69,8 +79,8 @@ class ActorCritic(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)), nn.ReLU(),
-            init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=2)), nn.ReLU(),
+            # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
@@ -85,10 +95,10 @@ class ActorCritic(nn.Module):
                                constant_(x, 0))
         self.shared_linear = nn.Sequential(
             Flatten(),
-            init_(nn.Linear(16 * map_height * map_width, 256)), nn.ReLU(),
+            init_(nn.Linear(32 * (map_height-1) * (map_width-1), 64)), nn.ReLU(),
             init_(nn.Linear(256, 256)), nn.ReLU(),
-            init_(nn.Linear(256, 256)), nn.ReLU(),
-            init_(nn.Linear(256, self.shared_out_size)), nn.ReLU(),
+            # init_(nn.Linear(64, self.shared_out_size)), nn.ReLU(),
+            # Ma
         )
 
         # self.shared_to_actor = nn.Sequential(
@@ -97,18 +107,18 @@ class ActorCritic(nn.Module):
         # )
 
         self.critic_mlps = nn.Sequential(
-            init_(nn.Linear(self.shared_out_size, 256)), nn.ReLU(),
-            init_(nn.Linear(256, 256)), nn.ReLU(),
-            init_(nn.Linear(256, 256)), nn.ReLU(),
-            init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(self.shared_out_size, 64)), nn.ReLU(),
+            # init_(nn.Linear(256, 256)), nn.ReLU(),
+            # init_(nn.Linear(256, 256)), nn.ReLU(),
+            # init_(nn.Linear(256, 256)), nn.ReLU(),
 
         )
-        self.critic_out = init_(nn.Linear(256, 1))
+        self.critic_out = init_(nn.Linear(64, 1))
 
         self.actor_mlps = nn.Sequential(
-            init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 256)), nn.ReLU(),
-            init_(nn.Linear(256, 256)), nn.ReLU(),
-            init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 64)), nn.ReLU(),
+            # init_(nn.Linear(256, 256)), nn.ReLU(),
+            # init_(nn.Linear(256, 256)), nn.ReLU(),
         )
 
         self.actor_out = nn.ModuleDict({
@@ -134,10 +144,10 @@ class ActorCritic(nn.Module):
             ),
             UNIT_TYPE_NAME_LIGHT: nn.Sequential(
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
-                init_(nn.Linear(256, 256)), nn.ReLU(),
-                init_(nn.Linear(256, 256)), nn.ReLU(),
-                init_(nn.Linear(256, 256)), nn.ReLU(),
-                init_(nn.Linear(256, LightAction.__members__.items().__len__())),
+                # init_(nn.Linear(256, 256)), nn.ReLU(),
+                # init_(nn.Linear(256, 256)), nn.ReLU(),
+                # init_(nn.Linear(256, 256)), nn.ReLU(),
+                init_(nn.Linear(64, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_HEAVY: nn.Sequential(

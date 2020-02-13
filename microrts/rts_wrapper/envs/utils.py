@@ -207,7 +207,7 @@ def signal_wrapper(raw):
     # gs_wrapper = GsWrapper(**json.loads(raw.split('\n')[1]))
     # print(raw)
     # input()
-    observation = state_encoder_v1(gs_wrapper.gs, curr_player)
+    observation = state_encoder_v2(gs_wrapper.gs, curr_player)
     reward = gs_wrapper.reward
     done = gs_wrapper.done
     # self.game_time = gs_wrapper.gs.time
@@ -457,8 +457,8 @@ def state_encoder_v1(gs: GameState, player):
     # channel_can_control = np.zeros((1, h, w))
     # channel_cannnot_control = np.full((1, h, w), fill_value=1)
 
-    channel_my_resources = np.full((1, h, w), fill_value=my_resources)
-    channel_opp_resources = np.full((1, h, w), fill_value=opp_resources)
+    channel_my_resources = np.zeros((8, h, w))
+    channel_opp_resources = np.zeros((8, h, w))
 
     id_location_map = {}
     for unit in units:
@@ -547,7 +547,6 @@ def state_encoder_v1(gs: GameState, player):
     #     if _act.unitType:
     #         channel_action_produce_type[UNIT_COLLECTION.index(_act.unitType)][_x][_y] = 1
     
-
     spatial_features = np.vstack(
         (
             channel_whether_walkable, # 2
@@ -581,6 +580,229 @@ def state_encoder_v1(gs: GameState, player):
     # input()
     return spatial_features
 
+def state_encoder_v2(gs: GameState, player):
+    """Encode the state for player given Game state from java
+    
+    Arguments:
+        gs {GameState} -- Game state from java
+        player {int} -- current player
+    
+    Returns:
+        np.array -- features
+    """
+    current_player = player
+    # AGENT_COLLECTION
+    pgs = gs.pgs
+    w = pgs.width
+    h = pgs.height
+    units = pgs.units
+    p1_info, p2_info = gs.pgs.players
+    my_resources  = p1_info.resources if current_player == p1_info.ID else p2_info.resources
+    opp_resources = p2_info.resources if current_player == p1_info.ID else p1_info.resources
+
+    # whether the box  walkable
+    # channel_whether_walkable = np.zeros((2, h, w))
+    cannot_walk = []
+    can_walk = []
+    for x in pgs.terrain:
+        if int(x) == 0:
+            cannot_walk.append(0)
+            can_walk.append(1)
+        else:
+            cannot_walk.append(1)
+            can_walk.append(0)
+    channel_whether_walkable = np.array([cannot_walk, can_walk]).reshape((2, h, w))
+
+    # channel_terrain = np.array([int(x) for x in pgs.terrain]).reshape((1, h, w))
+
+    # resource number in the box (Discretized)
+    channel_resource_size = np.zeros((8, h, w))
+    channel_resource_size[0,:,:] = 1 # default: select 0
+
+    # which type of units? the last bit indicates empty
+    channel_units_type    = np.zeros((len(UNIT_COLLECTION) + 1, h, w))
+    channel_units_type[-1,:,:] = 1
+
+    # whether my units occupy the box? not occupied, occupied
+    channel_whether_mine = np.zeros((2, h, w))
+    channel_whether_mine[0,:,:] = 1 # default: not
+
+    # Who am I?
+    channel_player = np.zeros((2, h, w))
+    channel_player[current_player,:,:] = 1
+
+    # hp ratio range None, 0%~10%, 10%~20%, 20%~40%, 40%~80%, 80%~100% 
+    channel_hp_ratio = np.zeros((6, h, w))
+    channel_hp_ratio[0,:,:] = 1 # default: select None
+
+    channel_my_resources = np.zeros((8, h, w))
+    channel_opp_resources = np.zeros((8, h, w))
+    _one_hot_my_resource_pos  = list(resource_encoder(my_resources)).index(1)
+    _one_hot_opp_resource_pos = list(resource_encoder(opp_resources)).index(1)
+    channel_my_resources[_one_hot_my_resource_pos,:,:]  = 1
+    channel_my_resources[_one_hot_opp_resource_pos,:,:] = 1
+
+
+    id_location_map = {}
+    for unit in units:
+        _owner = unit.player
+        _type = unit.type
+        _x, _y = unit.x, unit.y
+        _resource_carried = unit.resources
+        _hp = unit.hitpoints
+        _id = unit.ID
+
+        _one_hot_hp_ratio_pos = hp_ratio_encoder(_hp / UTT_DICT[_type].hp)
+        channel_hp_ratio[_one_hot_hp_ratio_pos][_x][_y] = 1
+        channel_hp_ratio[0][_x][_y] = 0 # when units exist, it always has hp, so not none
+
+        _one_hot_resource_pos = list(resource_encoder(_resource_carried)).index(1)
+        if _one_hot_resource_pos != 0:  # if == 0, selected by default
+            channel_resource_size[_one_hot_resource_pos][_x][_y] = 1
+
+        _one_hot_type_pos = UNIT_COLLECTION.index(_type)
+        channel_units_type[_one_hot_type_pos][_x][_y] = 1
+        channel_units_type[-1][_x][_y] = 0  # not empty
+
+        if _owner == current_player:
+            channel_whether_mine[1][_x][_y] = 1
+            channel_whether_mine[0][_x][_y] = 0 # unselected
+
+        id_location_map[_id] = unit
+    
+
+    # wheather is going under attack
+    channel_under_attack = np.zeros((2, h, w)) # not, is?
+    channel_under_attack[0,:,:] = 1 # default: not
+    
+    # action type one hot. According to ACTION_TYPE...(7) and not activate(1) one box
+    channel_action_type = np.zeros((8, h, w))
+    channel_action_type[-1,:,:] = 1 # default: not activate
+
+    # action direction one hot. According to ACTION_PARAMETER...(5) and not activate(1) 
+    channel_action_para = np.zeros((6, h, w))
+    channel_action_para[-1,:,:] = 1 # default: not activate
+
+    # action produce type. Which type of unit it produces. According to UNIT_COLLECTION(7) and not activate
+    channel_action_produce_type = np.zeros((len(UNIT_COLLECTION) + 1, h, w))
+    channel_action_produce_type[-1,:,:] = 1
+
+    # action completion ratio, 0-20, 20-40, 40-60, 60-80, 80-100 and not activate
+    channel_action_completion_ratio = np.zeros((6, h, w))
+    channel_action_completion_ratio[-1,:,:] = 1
+
+    for action in gs.actions:
+        _id = action.ID # the executor id of the action
+        _action = action.action
+        _unit = id_location_map[_id]
+        _x, _y = _unit.x, _unit.y
+
+        atk_x, atk_y = _action.x, _action.y  # the box location under attack
+
+        # TODO: is the following cheats?
+        if _action.type == ACTION_TYPE_ATTACK_LOCATION and atk_x >= 0 and atk_y >= 0:
+            channel_under_attack[1][atk_x][atk_y] = 1
+            channel_under_attack[0][atk_x][atk_y] = 0
+
+        channel_action_type[_action.type][_x][_y] = 1
+        channel_action_type[-1][_x][_y] = 0 # activate
+
+        if  _action.parameter >= -1 and _action.parameter <= 3:
+            channel_action_para[_action.parameter + 1][_x][_y] = 1
+            channel_action_para[-1][_x][_y] = 0 # activate
+
+        if _action.unitType:
+            channel_action_produce_type[UNIT_COLLECTION.index(_action.unitType)][_x][_y] = 1
+            channel_action_produce_type[-1][_x][_y] = 0 # activate
+        
+        completion_ratio = None
+        if _action.type == ACTION_TYPE_NONE:
+            pass
+        elif _action.type == ACTION_TYPE_MOVE:
+            completion_ratio = (action.time - gs.time)/ UTT_DICT[_unit.type].moveTime
+        elif _action.type == ACTION_TYPE_ATTACK_LOCATION:
+            completion_ratio = (action.time - gs.time)/ UTT_DICT[_unit.type].attackTime
+        elif _action.type == ACTION_TYPE_HARVEST:
+            completion_ratio = (action.time - gs.time)/ UTT_DICT[_unit.type].harvestTime
+        elif _action.type == ACTION_TYPE_RETURN:
+            completion_ratio = (action.time - gs.time)/ UTT_DICT[_unit.type].returnTime
+        elif _action.type == ACTION_TYPE_PRODUCE:
+            completion_ratio = (action.time - gs.time)/ UTT_DICT[_action.unitType].produceTime
+        
+        if completion_ratio:
+            channel_action_completion_ratio[completion_ratio_encoder(completion_ratio)][_x][_y] = 1
+            channel_action_completion_ratio[-1][_x][_y] = 0 # activated
+
+    spatial_features = np.vstack(
+        (
+            channel_whether_walkable, # 2
+            channel_resource_size,    # 8
+            channel_hp_ratio,         # 6
+            channel_units_type,       # 8
+
+            channel_whether_mine,     # 2
+            channel_my_resources,     # 8
+            channel_opp_resources,    # 8
+
+            channel_under_attack,     # 2
+            # 44
+
+            channel_action_type,      # 8
+            channel_action_para,      # 6
+            channel_action_produce_type,     # 8
+            channel_action_completion_ratio, # 6
+            # 28
+
+            channel_player,           # 2
+            # 2
+                                    # total 74
+        ),
+    )
+    # print(spatial_features.shape)
+    # input()
+    return spatial_features
+
+def completion_ratio_encoder(completion_ratio:float):
+    """one hot encoding of hp ratio range: None, 0%~20%, 20%~40%, 40%~60%, 60%~80%, 80%~100% 
+    6 bits
+    Arguments:
+        completion_ratio {float} -- [description]
+    
+    Returns:
+        [type] -- [description]
+    """
+    # _range = np.zeros(())
+    if completion_ratio < .2:
+        return 0
+    elif completion_ratio < .4:
+        return 1
+    elif completion_ratio < .6:
+        return 2
+    elif completion_ratio < .8:
+        return 3
+    else:
+        return 4
+
+def hp_ratio_encoder(hp_ratio:float):
+    """one hot encoding of hp ratio range: None, 0%~10%, 10%~20%, 20%~40%, 40%~80%, 80%~100% 
+    6 bits
+    Arguments:
+        hp_ratio {float} -- The given hp ratio
+    return: position in one hot encoding
+    """
+    # _range = np.zeros(())
+    if hp_ratio == 0:
+        return 0
+    elif hp_ratio < .1:
+        return 1
+    elif hp_ratio < .2:
+        return 2
+    elif hp_ratio < .4:
+        return 3
+    elif hp_ratio < .8:
+        return 4
+    else:
+        return 5
 
 def utt_encoder(utt_str: str):
     max_value = 10000000
@@ -935,6 +1157,17 @@ def game_action_translator(u: Unit, ua: UnitAction):
 
 
 def resource_encoder(amount, feature_length=8, amount_threshold=2):
+    """0, 1, 2, 4, 8, 16, 32, other
+    Arguments:
+        amount {[type]} -- [description]
+    
+    Keyword Arguments:
+        feature_length {int} -- [description] (default: {8})
+        amount_threshold {int} -- [description] (default: {2})
+    
+    Returns:
+        [type] -- [description]
+    """
     resource = np.zeros(8)
     if amount == 0:
         resource[0] = 1

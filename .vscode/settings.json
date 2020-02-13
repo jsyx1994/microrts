@@ -10,6 +10,6 @@
     "python.linting.pylintEnabled": true,
     "python.linting.mypyEnabled": false,
     "python.linting.pylamaEnabled": false,
-    "editor.fontFamily": "'Droid Sans Mono', 'monospace', monospace, 'Droid Sans Fallback'",
+    "editor.fontFamily": "'Space Mono'",
     "editor.fontLigatures":true
 }

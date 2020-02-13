@@ -39,7 +39,6 @@ class Batches:
                 torch.from_numpy(self.rewards).float().to(device).unsqueeze(1), \
                 done_masks.to(device).unsqueeze(1)
                 # torch.from_numpy(self.done).int().to(device).unsqueeze(1)
-
                 
 
 
@@ -70,7 +69,10 @@ class ReplayBuffer(object):
     def refresh(self):
         self._storage.clear()
         self._next_idx = 0
-
+        
+    def shuffle(self):
+        random.shuffle(self._storage)
+        
     def push(self, **kwargs):
         """Saves a transition   
 
