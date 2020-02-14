@@ -55,7 +55,7 @@ def play(env_id, nn_path=None):
 
     nn.to(device)
 
-    num_process = 2
+    num_process = 8
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
 
 
@@ -80,7 +80,7 @@ def play(env_id, nn_path=None):
     # print(len(agents))
     # input()
     update_steps = 5
-    algo = A2C(nn, 7e-5, weight_decay=1e-7)
+    algo = A2C(nn, 1e-4, weight_decay=3e-6, log_interval=5)
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
@@ -102,7 +102,7 @@ def play(env_id, nn_path=None):
                     action = [] # reset
                     epi_idx += .5
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
-
+                    agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     agents[i][j].forget()
 
                 action_i.append(action)
@@ -136,7 +136,7 @@ def play(env_id, nn_path=None):
 
 
         if frames == 1000:
-            # print(frames * num_process / (time.time() - st))
+            print("fps", frames * num_process / (time.time() - st))
             frames = 0
             st = time.time()
             # torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl.pth"))
@@ -172,5 +172,5 @@ if __name__ == "__main__":
     # p.nice(10)
     # input()
     torch.manual_seed(0)
-    play("attackHome-v0")
+    play("singleBattle-v0")
 

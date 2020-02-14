@@ -13,7 +13,7 @@ from torch.distributions import Categorical
 
 rd = np.random
 rd.seed()
-torch.random.seed()
+# torch.random.seed()
 
 def get_config(env_id) -> Config :
         from microrts.rts_wrapper import environments
