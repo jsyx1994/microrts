@@ -92,7 +92,7 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
 
     # optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
 
-    algo = A2C(nn,lr=1e-4, weight_decay=3e-6, entropy_coef=.08, value_loss_coef=.1, log_interval=5, gamma=.99)
+    algo = A2C(nn,lr=1e-4, weight_decay=3e-6, entropy_coef=.04, value_loss_coef=.1, log_interval=5, gamma=.99)
     # update_step = 64 #+ agents[0].random_rollout_steps
     # step = 0
     for epi_idx in range(env.max_episodes):

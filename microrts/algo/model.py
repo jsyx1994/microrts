@@ -64,7 +64,7 @@ class ActorCritic(nn.Module):
         """
         super(ActorCritic, self).__init__()
         map_height, map_width = map_size
-        self.shared_out_size = 64
+        self.shared_out_size = 128
 
 
         self.activated_agents = [
@@ -79,13 +79,13 @@ class ActorCritic(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=2)), nn.ReLU(),
-            # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=2)), nn.ReLU(),
+            init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
             # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
 
-            # nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
+            nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
         )
         self.self_attn = nn.Sequential(
             Pic2Vector(),
@@ -95,9 +95,9 @@ class ActorCritic(nn.Module):
                                constant_(x, 0))
         self.shared_linear = nn.Sequential(
             Flatten(),
-            init_(nn.Linear(32 * (map_height-1) * (map_width-1), 64)), nn.ReLU(),
-            init_(nn.Linear(256, 256)), nn.ReLU(),
-            # init_(nn.Linear(64, self.shared_out_size)), nn.ReLU(),
+            init_(nn.Linear(32 * (map_height) * (map_width), 128)), nn.ReLU(),
+            # init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
             # Ma
         )
 
@@ -107,17 +107,17 @@ class ActorCritic(nn.Module):
         # )
 
         self.critic_mlps = nn.Sequential(
-            init_(nn.Linear(self.shared_out_size, 64)), nn.ReLU(),
-            # init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(self.shared_out_size, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
 
         )
-        self.critic_out = init_(nn.Linear(64, 1))
+        self.critic_out = init_(nn.Linear(128, 1))
 
         self.actor_mlps = nn.Sequential(
-            init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 64)), nn.ReLU(),
-            # init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
         )
 
@@ -147,7 +147,7 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
-                init_(nn.Linear(64, LightAction.__members__.items().__len__())),
+                init_(nn.Linear(128, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_HEAVY: nn.Sequential(

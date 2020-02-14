@@ -691,12 +691,14 @@ def state_encoder_v2(gs: GameState, player):
     channel_action_completion_ratio = np.zeros((6, h, w))
     channel_action_completion_ratio[-1,:,:] = 1
 
+    # intention of the unit action
+    # channel_intention = np.zeros()
+
     for action in gs.actions:
         _id = action.ID # the executor id of the action
         _action = action.action
         _unit = id_location_map[_id]
         _x, _y = _unit.x, _unit.y
-
         atk_x, atk_y = _action.x, _action.y  # the box location under attack
 
         # TODO: is the following cheats?
@@ -719,16 +721,17 @@ def state_encoder_v2(gs: GameState, player):
         if _action.type == ACTION_TYPE_NONE:
             pass
         elif _action.type == ACTION_TYPE_MOVE:
-            completion_ratio = (action.time - gs.time)/ UTT_DICT[_unit.type].moveTime
+            completion_ratio = (gs.time - action.time)/ UTT_DICT[_unit.type].moveTime
         elif _action.type == ACTION_TYPE_ATTACK_LOCATION:
-            completion_ratio = (action.time - gs.time)/ UTT_DICT[_unit.type].attackTime
+            completion_ratio = (gs.time - action.time)/ UTT_DICT[_unit.type].attackTime
         elif _action.type == ACTION_TYPE_HARVEST:
-            completion_ratio = (action.time - gs.time)/ UTT_DICT[_unit.type].harvestTime
+            completion_ratio = (gs.time - action.time)/ UTT_DICT[_unit.type].harvestTime
         elif _action.type == ACTION_TYPE_RETURN:
-            completion_ratio = (action.time - gs.time)/ UTT_DICT[_unit.type].returnTime
+            completion_ratio = (gs.time - action.time)/ UTT_DICT[_unit.type].returnTime
         elif _action.type == ACTION_TYPE_PRODUCE:
-            completion_ratio = (action.time - gs.time)/ UTT_DICT[_action.unitType].produceTime
+            completion_ratio = (gs.time - action.time)/ UTT_DICT[_action.unitType].produceTime
         
+        # print(completion_ratio)
         if completion_ratio:
             channel_action_completion_ratio[completion_ratio_encoder(completion_ratio)][_x][_y] = 1
             channel_action_completion_ratio[-1][_x][_y] = 0 # activated
@@ -743,19 +746,16 @@ def state_encoder_v2(gs: GameState, player):
             channel_whether_mine,     # 2
             channel_my_resources,     # 8
             channel_opp_resources,    # 8
-
-            channel_under_attack,     # 2
+            channel_player,           # 2
             # 44
 
+            channel_under_attack,     # 2
             channel_action_type,      # 8
             channel_action_para,      # 6
             channel_action_produce_type,     # 8
             channel_action_completion_ratio, # 6
-            # 28
-
-            channel_player,           # 2
-            # 2
-                                    # total 74
+            # 30
+                                    
         ),
     )
     # print(spatial_features.shape)
