@@ -3,10 +3,9 @@ import gym
 import torch
 
 from .vec_env import VecEnv
-from baselines.common.vec_env.vec_env import CloudpickleWrapper, clear_mpi_env_vars
 
 from microrts.algo.model import ActorCritic
-from microrts.algo.utils import load_model
+from microrts.algo.utils import load_model, CloudpickleWrapper, clear_mpi_env_vars
 from microrts.algo.agents import Agent
 from .utils import get_config
 import time
