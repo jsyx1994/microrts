@@ -97,6 +97,25 @@ environments = [
 
             }
     },
+    {
+        'id': "doubleBattle-v0",
+        'entry_point': "microrts.rts_wrapper.envs:BattleEnv",
+        'kwargs':
+            {
+                'config': Config(
+                    ai1_type='socketAI',
+                    ai2_type='socketAI',
+                    map_path=os.path.join(settings.map_dir, '4x4/doubleBattle4x4.xml'),
+                    height=4,
+                    width=4,
+                    self_play=True,
+                    # period=20,
+                    max_cycles=1000,
+                    max_episodes=1000000000,
+                ),
+
+            }
+    },
 
     {
         'id': "battle2v2LightMelee-v0",
