@@ -52,7 +52,7 @@ class NNBase(nn.Module):
 
 class ActorCritic(nn.Module):
 
-    def __init__(self, map_size, input_channel=74, unit_feature_size=20):
+    def __init__(self, map_size, input_channel=44, unit_feature_size=20):
         """[summary]
         
         Arguments:
