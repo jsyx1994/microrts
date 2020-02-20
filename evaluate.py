@@ -82,4 +82,4 @@ if __name__ == "__main__":
     parser.add_argument('m_path')
     args = parser.parse_args()
 
-    evaluate("EvalsingleBattle-v0","NaiveMCTS", nn_path=os.path.join(settings.models_dir, args.m_path))
+    evaluate("EvaldoubleBattle-v0","NaiveMCTS", nn_path=os.path.join(settings.models_dir, args.m_path))
