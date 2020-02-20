@@ -55,7 +55,7 @@ def play(env_id, nn_path=None):
 
     nn.to(device)
 
-    num_process = 8
+    num_process = 4
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
 
 
@@ -104,9 +104,13 @@ def play(env_id, nn_path=None):
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
                     agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     agents[i][j].forget()
+                    print(i, j)
 
                 action_i.append(action)
             actions_n.append(action_i)
+        
+        # print(action)
+        # input()
         
         if time_stamp:
             # print("logged", iter_idx)
@@ -123,7 +127,7 @@ def play(env_id, nn_path=None):
         frames += 1
         
         # print(time.time() - st)
-        if frames % update_steps == 0:
+        if len(memory) % (update_steps * num_process) == 0:
             # print(memory.__len__())
             algo.update(memory, iter_idx, callback=logger, device=device)
             iter_idx += 1
@@ -132,9 +136,6 @@ def play(env_id, nn_path=None):
         #     algo.update(memory, iter_idx, callback=logger, device=device)
         #     iter_idx += 1
         
-
-
-
         if frames == 1000:
             print("fps", frames * num_process / (time.time() - st))
             frames = 0
