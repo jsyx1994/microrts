@@ -148,5 +148,5 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
 
 if __name__ == '__main__':
     torch.manual_seed(0)
-    self_play("doubleBattle-v0", render=0, opponent="socketAI")
+    self_play("singleBattle-v0", render=0, opponent="socketAI")
     # self_play(nn_path=os.path.join(settings.models_dir, "rl999.pth"))

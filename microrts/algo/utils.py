@@ -5,7 +5,7 @@ import contextlib
 
 def load_model(path, map_size):
     model = ActorCritic(map_size)
-    model.load_state_dict(torch.load(path))
+    model.load_state_dict(torch.load(path,map_location=torch.device("cpu")))
     return model
 
 

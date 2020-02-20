@@ -116,6 +116,25 @@ environments = [
 
             }
     },
+    {
+        'id': "fullgame-v0",
+        'entry_point': "microrts.rts_wrapper.envs:BattleEnv",
+        'kwargs':
+            {
+                'config': Config(
+                    ai1_type='socketAI',
+                    ai2_type='socketAI',
+                    map_path=os.path.join(settings.map_dir, '6x6/fullgame6x6.xml'),
+                    height=6,
+                    width=6,
+                    self_play=True,
+                    # period=20,
+                    max_cycles=1000,
+                    max_episodes=1000000000,
+                ),
+
+            }
+    },
 
     {
         'id': "battle2v2LightMelee-v0",

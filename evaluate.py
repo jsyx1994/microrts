@@ -8,7 +8,7 @@ from microrts.algo.agents import Agent
 from microrts.rts_wrapper.envs.utils import get_config
 import argparse
 
-def evaluate(env_id, ai2_type="socketAI", nn_path=None):
+def evaluate(env_id, ai2_type="socketAI", nn_path=None, fast_forward=False, episodes=1000):
     """self play program
     
     Arguments:
@@ -24,12 +24,15 @@ def evaluate(env_id, ai2_type="socketAI", nn_path=None):
     config = get_config(env_id)
     # print(config)
     # input()
+    config.max_episodes = episodes
     config.ai2_type = ai2_type
+    if fast_forward:
+        config.render = 0
+        config.period = 1
     env = gym.make(env_id)
     # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
 
     start_from_scratch = nn_path is None
-    
     players = env.players
 
     if start_from_scratch:
@@ -48,6 +51,7 @@ def evaluate(env_id, ai2_type="socketAI", nn_path=None):
     # print(players[0].brain is players[1].brain) # True
 
     # optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
+    winning_count=[0,0,0]
 
     for _ in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset
@@ -61,8 +65,9 @@ def evaluate(env_id, ai2_type="socketAI", nn_path=None):
                 # actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
                 # _st = time.time()
                 action = agents[i].think(obses=obses_t[i], accelerator=device,mode="eval")
-                print(action)
-                input()
+                if not fast_forward:
+                    print(action)
+                    input()
                 # input()
                 # print((time.time() - _st))
 
@@ -75,11 +80,27 @@ def evaluate(env_id, ai2_type="socketAI", nn_path=None):
             obses_t = obses_tp1
 
         winner = obses_tp1[0].info["winner"]
+        winning_count[winner] += 1
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
+    return winning_count
 
 if __name__ == "__main__":
+    # python3 evaluate.py --model-path rl2v2.pth --fast-forward True --episodes 100 
     parser = argparse.ArgumentParser()
-    parser.add_argument('m_path')
+    parser.add_argument(
+        '--model-path', help='path of the model to be evaluated')
+    parser.add_argument(
+        '--fast-forward',
+        action='store_true',
+        default=False
+    )
+    parser.add_argument(
+        '--episodes',
+        # default=10e6,
+        type=int,
+        default=1000,
+    )
     args = parser.parse_args()
-
-    evaluate("EvalsingleBattle-v0","NaiveMCTS", nn_path=os.path.join(settings.models_dir, args.m_path))
+    print(args.fast_forward)
+    winning_count = evaluate("singleBattle-v0","NaiveMCTS", nn_path=os.path.join(settings.models_dir, args.model_path), fast_forward=args.fast_forward, episodes=args.episodes)
+    print(winning_count)
