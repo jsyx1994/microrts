@@ -137,6 +137,7 @@ class ActorCritic(nn.Module):
                     nn.init.constant_(param, 0)
                 elif 'weight' in name:
                     nn.init.orthogonal_(param)
+        self.layer_norm = nn.LayerNorm(normalized_shape=(128))
 
         self.actor_out = nn.ModuleDict({
             UNIT_TYPE_NAME_WORKER: nn.Sequential(
@@ -210,7 +211,7 @@ class ActorCritic(nn.Module):
             x, hxs =self.gru(x.unsqueeze(0), hxses)
             x = x.squeeze(0)
 
-        x = nn.LayerNorm(x.size()[1:])(x)
+        x = self.layer_norm(x)
 
         x = torch.cat([x, unit_feature], dim=1)
         x = self.actor_mlps(x)
