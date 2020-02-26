@@ -39,9 +39,11 @@ class A2C:
                 continue
 
             if sps_dict[key]:
-                states, units, actions, next_states, rewards,  done_masks = sps_dict[key].to(device)
-
-                value, probs = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
+                states, units, actions, next_states, rewards, hxses, done_masks = sps_dict[key].to(device)
+                if self.actor_critic.recurrent:
+                    value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
+                else:
+                    value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
                 # m = torch.distributions.Categorical(probs=probs)
                 print(value)
                 value_next = nn.critic_forward(next_states).detach()

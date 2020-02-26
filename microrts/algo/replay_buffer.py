@@ -17,6 +17,7 @@ class Transition:
     action  : Any
     obs_tp1 : np.array
     reward  : float
+    hxs     : np.array
     done    : bool
 
 @dataclass
@@ -26,6 +27,7 @@ class Batches:
     actions: np.array
     next_states: np.array
     rewards: np.array
+    hxses: np.array
     done: np.array
     def to(self,device):
         done_masks = torch.FloatTensor(
@@ -37,7 +39,8 @@ class Batches:
                 torch.from_numpy(self.actions).long().to(device).unsqueeze(1), \
                 torch.from_numpy(self.next_states).float().to(device), \
                 torch.from_numpy(self.rewards).float().to(device).unsqueeze(1), \
-                done_masks.to(device).unsqueeze(1)
+                torch.from_numpy(self.hxses).float().to(device) if self.hxses.any() else self.hxses, \
+                done_masks.to(device).unsqueeze(1), \
                 # torch.from_numpy(self.done).int().to(device).unsqueeze(1)
                 
 
@@ -82,6 +85,7 @@ class ReplayBuffer(object):
             reward {float} -- [description]
             obs_tp1 {np.array} -- [description]
             done {bool} -- [description]
+            hxs {np.array} -- [description]
         """
         trans = Transition(**kwargs)
         if self._next_idx >= len(self._storage):
@@ -108,12 +112,12 @@ class ReplayBuffer(object):
 
         """
         # print(idxes)
-        unit_types, states, units, actions, next_states, rewards, done_masks = [], [], [], [], [], [], []
+        unit_types, states, units, actions, next_states, rewards, hxses, done_masks = [], [], [], [], [], [],[], []
 
         for i in idxes:
             transition = self._storage[i]
             
-            state, unit_action, next_state, reward, done = transition.__dict__.values()
+            state, unit_action, next_state, reward,hxs, done = transition.__dict__.values()
             map_size = state.shape[-2:]
 
             u, a = unit_action
@@ -123,6 +127,7 @@ class ReplayBuffer(object):
             units.append(np.hstack((unit_feature_encoder(u, map_size),encoded_utt_dict[u.type])))
             actions.append(a)
             next_states.append(next_state)
+            hxses.append(hxs)
             rewards.append(reward)
             done_masks.append(done)
 
@@ -148,6 +153,7 @@ class ReplayBuffer(object):
                 np.array(actions),      \
                 np.array(next_states),  \
                 np.array(rewards),      \
+                np.array(hxses),        \
                 np.array(done_masks)
 
 
@@ -184,7 +190,7 @@ class ReplayBuffer(object):
                 UNIT_TYPE_NAME_HEAVY:       [],
                 UNIT_TYPE_NAME_RANGED:      [],
         }
-        unit_types, states, units, actions, next_states, rewards, done_masks = batch
+        unit_types, states, units, actions, next_states, rewards,hxses, done_masks = batch
         for i in range(batch_size):
             ans[unit_types[i]].append((
                 states[i],
@@ -192,11 +198,12 @@ class ReplayBuffer(object):
                 actions[i],
                 next_states[i],
                 rewards[i],
+                hxses[i],
                 done_masks[i]
                 ))
         
         for key in ans:
-            states, units, actions, next_states, rewards, done_masks = [], [], [], [], [], []
+            states, units, actions, next_states, rewards,hxses, done_masks = [], [], [], [], [], [], []
             if ans[key]:
                 for v in ans[key]:
                     states.append(v[0])
@@ -204,7 +211,8 @@ class ReplayBuffer(object):
                     actions.append(v[2])
                     next_states.append(v[3])
                     rewards.append(v[4])
-                    done_masks.append(v[5])
+                    hxses.append(v[5])
+                    done_masks.append(v[6])
                 
                 temp = {
                     "states" : np.array(states),
@@ -212,6 +220,7 @@ class ReplayBuffer(object):
                     "actions": np.array(actions),
                     "next_states":np.array(next_states),
                     "rewards":np.array(rewards),
+                    "hxses":np.array(hxses),
                     "done":  np.array(done_masks)
                 }
                 ans[key] = Batches(**temp)

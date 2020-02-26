@@ -74,7 +74,7 @@ def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callb
     return samples
 
 
-def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callback=None):
+def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden_states:dict=None, callback=None):
     # import time
     assert mode in ['stochastic', 'deterministic']
     unit_valid_actions = info["unit_valid_actions"]  # available unit and its valid actions
@@ -99,6 +99,7 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
             UNIT_TYPE_NAME_RANGED:      [],
     }
     samples = []
+    hxses = []
 
     for uva in unit_valid_actions:
         uva_dict[uva.unit.type].append(uva)
@@ -106,14 +107,19 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
 
     # st = time.time()
     for key in uva_dict:
-        states, units = [], []
+        states, units, _hxses = [], [], []
         if uva_dict[key]:
             for uva in uva_dict[key]:
                 u = uva.unit
                 states.append(state)
                 units.append(np.hstack((unit_feature_encoder(u, map_size), encoded_utt_dict[u.type])))
+                if model.recurrent:
+                    if u.ID in hidden_states.keys(): # check if hidden_states has hidden state of the unit, otherwise, init to zero
+                        _hxses.append(hidden_states[u.ID])
+                    else:
+                        _hxses.append(np.zeros((128)))
             
-            batch_dict[key] = (np.array(states), np.array(units))
+            batch_dict[key] = (np.array(states), np.array(units), np.array(_hxses))
     # print(1, time.time() - st)
 
     
@@ -121,39 +127,61 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic', callb
     with torch.no_grad():
         for key in batch_dict:
             if batch_dict[key]:
-                states, units = batch_dict[key]
+                if key not in model.activated_agents:
+                    continue
+                states, units, _hxses = batch_dict[key]
                 states = torch.from_numpy(states).float().to(device)
                 units = torch.from_numpy(units).float().to(device)
+                _hxses= torch.from_numpy(_hxses).float().to(device)
                 # if mode == 'stochastic':
                 #     sampled_unit_action = model.stochastic_action_sampler(key, states, units)
                 # elif mode == 'deterministic':
                 #     sampled_unit_action = model.deterministic_action_sampler(key, states, units)
-                if key not in model.activated_agents:
-                    continue
                 actions = []
-                probs= model.actor_forward(key, states, units)
-                # print(probs.requires_grad)
+                probs, hxs = model.actor_forward(key, states, units, _hxses.unsqueeze(0))
+                # print(probs.shape, hxs.shape)
+                if mode == "stochastic":
+                    # print(probs.requires_grad)
 
-                # m = Categorical(logits=logits)
-                m = Categorical(probs)
-                
-                # print(state)
-                print(probs)
-                # input()
+                    # m = Categorical(logits=logits)
+                    m = Categorical(probs)
+                    
+                    # print(state)
+                    print(probs)
+                    # input()
 
-                idxes = m.sample()
-                # print(m.sample() == m.sample())
-                # input()
-                # print(key)
-                for idx in idxes:
-                    actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
+                    idxes = m.sample()
+                    # print(idxes.shape)
+                    # input()
+                    # print(m.sample() == m.sample())
+                    # input()
+                    # print(key)
+                    for i, idx in enumerate(idxes):
+                        if model.recurrent:
+                            hxses.append(hxs[0][i][:].float().numpy())
+                        # print(hxses[i].shape)
+                        # input()
+                        actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
+                elif mode == "deterministic":
+                    x = torch.max(probs,1)
+                    for i, idx in enumerate(x.indices):
+                        if model.recurrent:
+                            hxses.append(hxs[0][i][:].float().numpy())
 
-                sample = list(zip(uva_dict[key], actions))  
+                        actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
+                    # print(x.index(0))
+
+                sample = list(zip(uva_dict[key], actions))  # once all the units's actions of the TYPE is sampled
                 samples.extend(sample)
+                # print(len(actions), len(hxses))
+                # input()
+                # print(len(hxs), len(samples))
+                # input()
+
         # print(2, time.time() - st)
     
 
-    return samples
+    return samples, hxses
 
 
 def get_available_port():

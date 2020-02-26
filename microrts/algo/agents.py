@@ -7,6 +7,7 @@ class Agent:
     units_on_working = {}
     steps = 0
     _memory = None
+    _hidden_states = {} # id -> hidden_states
 
 
     def __init__(self, model, memory_size=10000, random_rollout_steps=128):
@@ -17,6 +18,7 @@ class Agent:
     def forget(self):
         self.units_on_working.clear()
         self.steps = 0
+        self._hidden_states.clear()
     
     def get_memory(self):
         return self._memory
@@ -24,7 +26,7 @@ class Agent:
     def sum_up(self, callback=None, **kwargs):
         self.think(callback, **kwargs)
 
-    def think(self, callback=None, **kwargs):
+    def think(self, callback=None,way="stochastic",**kwargs):
         """figure out the action according to helper function and obs, store env related action to itself and \
             nn related result to Replay Buffer. More
         Arguments:
@@ -64,28 +66,37 @@ class Agent:
         # input()
         sampler = action_sampler_v2
         self.steps += 1
-        player_actions = sampler(
-            info=info,
-            model=self.brain,
-            state=obs,
-            device=device)
-        # print(time.time() - st)
-        # print(player_actions)
-        network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in player_actions]
+        samples, hxses = sampler(
+                info=info,
+                model=self.brain,
+                state=obs,
+                device=device,
+                mode=way,
+                hidden_states= self._hidden_states,
+                )
+        network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in samples]
 
+        if self.brain.recurrent:
+            for i, s in enumerate(samples): # figure out the subject of the hxses:
+                self._hidden_states[str(s[0].unit.ID)] = hxses[:][i][:]
+        # print(self._hidden_states)
+        # input()
         transition = {}
         if mode == "train" and sampler is not network_simulator:
             # sample the transition in a correct way
             for u, a in network_unit_actions:
                 _id = str(u.ID)
                 if _id in self.units_on_working:
+                    # print(self._hidden_states.keys())
                     transition = {
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":obs,
                         "reward":reward,
+                        "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
-                        }   
+                        }
+
                     # self._memorize(
                         # obs_t=self.units_on_working[_id][0],
                         # action=self.units_on_working[_id][1],
@@ -101,5 +112,8 @@ class Agent:
         
         if transition and callback:
             callback(transition)
-        
-        return player_actions
+        # print(unzip(*samples))
+        # input()
+
+
+        return samples
