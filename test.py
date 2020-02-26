@@ -16,33 +16,6 @@ from microrts.algo.replay_buffer import ReplayBuffer
 from microrts.algo.a2c import A2C
 from microrts.algo.agents import Agent
 
-def evaluate():
-    """deprecated"""
-    env = gym.make("EvalAgainstRandom-v0")
-    players = env.players
-    assert env.player1 is not None, "player No.1 can not be missed"
-    eval_model = load_model(os.path.join(settings.models_dir, "_1M.pth"), env.map_size)
-    env.player1.load_brain(eval_model)
-    # env.player1.load_brain(os.path.join(settings.models_dir, "1M.pth"), env.map_size[0], env.map_size[1])
-    # input()
-    for _ in range(env.max_episodes):
-        obses = env.reset()  # p1 and p2 reset
-        while not obses[0].done:
-            actions = []
-            for i in range(len(players)):
-                # players[i].think(obses[i])
-                # print(players[i].think(action_sampler_v1, obs=obses[i].observation, info=obses[i].info))
-                actions.append(players[i].think(obs=obses[i].observation, info=obses[i].info))
-                # input()
-                # actions.append(network_simulator(obses[i].info["unit_valid_actions"]))
-            obses = env.step(actions)
-            # print(obses)
-        winner = env.get_winner()
-        print(winner)
-
-    print(env.setup_commands)
-
-
 def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
     """self play program
     
@@ -72,7 +45,7 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
     players = env.players
  
     if start_from_scratch:
-        nn = ActorCritic(env.map_size,recurrent=True)
+        nn = ActorCritic(env.map_size)
     else:
         nn = load_model(nn_path, env.map_size)
 
@@ -86,13 +59,6 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
     
 
     agents = [Agent(model=nn) for _ in range(env.players_num)]
-    print(len(agents))
-    # input()
-
-    # print(players[0].brain is players[1].brain) # True
-
-    # optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
-
     algo = A2C(nn,lr=1e-4, weight_decay=3e-6, entropy_coef=.08, value_loss_coef=.1, log_interval=5, gamma=.99)
     # update_step = 64 #+ agents[0].random_rollout_steps
     # step = 0
@@ -148,6 +114,30 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--env-id",
+    )
+    parser.add_argument(
+        '--model-path', help='path of the model to be loaded')
+    parser.add_argument(
+        '--episodes',
+        # default=10e6,
+        type=int,
+        default=10e8,
+    )
+    parser.add_argument(
+        '-stc',
+        # type=bool,
+        action="store_true",
+        default=False
+    )
+    parser.add_argument(
+        '--recurrent',
+        action="store_true",
+        # type=bool,
+        default=False,
+    )
     torch.manual_seed(0)
     self_play("singleBattle-v0", render=0, opponent="socketAI")
     # self_play(nn_path=os.path.join(settings.models_dir, "rl999.pth"))

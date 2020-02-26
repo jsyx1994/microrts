@@ -39,7 +39,7 @@ class Batches:
                 torch.from_numpy(self.actions).long().to(device).unsqueeze(1), \
                 torch.from_numpy(self.next_states).float().to(device), \
                 torch.from_numpy(self.rewards).float().to(device).unsqueeze(1), \
-                torch.from_numpy(self.hxses).float().to(device) if self.hxses.any() else self.hxses, \
+                torch.from_numpy(self.hxses).float().to(device) if self.hxses.all() else self.hxses, \
                 done_masks.to(device).unsqueeze(1), \
                 # torch.from_numpy(self.done).int().to(device).unsqueeze(1)
                 

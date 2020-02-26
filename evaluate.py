@@ -15,6 +15,7 @@ def evaluate(
         fast_forward=False, 
         episodes=1000,
         stochastic=True,
+        recurrent=False,
         ):
     """self play program
     
@@ -46,9 +47,9 @@ def evaluate(
     players = env.players
 
     if start_from_scratch:
-        nn = ActorCritic(env.map_size)
+        nn = ActorCritic(env.map_size, recurrent)
     else:
-        nn = load_model(nn_path, env.map_size)
+        nn = load_model(nn_path, env.map_size, recurrent)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # device = "cpu"
@@ -98,13 +99,17 @@ def evaluate(
     return winning_count
 
 if __name__ == "__main__":
-    # python3 evaluate.py --model-path rl2v2.pth --fast-forward True --episodes 100
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--env-id",
+    )
     parser.add_argument(
         '--model-path', help='path of the model to be evaluated')
     parser.add_argument(
+        '-ff',
         '--fast-forward',
-        type=bool,
+        action="store_true",
+        # type=bool,
         default=False
     )
     parser.add_argument(
@@ -114,11 +119,28 @@ if __name__ == "__main__":
         default=1000,
     )
     parser.add_argument(
-        '--stc',
-        type=bool,
+        '-stc',
+        # type=bool,
+        action="store_true",
         default=False
+    )
+    parser.add_argument(
+        '--recurrent',
+        action="store_true",
+        # type=bool,
+        default=False,
     )
     args = parser.parse_args()
     print(args.fast_forward)
-    winning_count = evaluate("singleBattle-v0","socketAI", nn_path=os.path.join(settings.models_dir, args.model_path), fast_forward=args.fast_forward, episodes=args.episodes,stochastic=args.stc)
+    winning_count = evaluate(
+        env_id=args.env_id,
+        ai2_type="NaiveMCTS", 
+        nn_path=os.path.join(settings.models_dir, args.model_path), 
+        fast_forward=args.fast_forward, 
+        episodes=args.episodes,
+        stochastic=args.stc,
+        recurrent=args.recurrent,
+        )
     print(winning_count)
+    # python3 evaluate.py --env-id singleBattle-v0 -stc --episodes 100 -ff --recurrent  --model-path rl1599.pth  
+
