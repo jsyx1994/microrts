@@ -54,7 +54,7 @@ class ActorCritic(nn.Module):
 
     def __init__(self, 
         map_size, 
-        input_channel=44,
+        input_channel=58,
         unit_feature_size=20,
         recurrent=False,
         ):
@@ -105,7 +105,7 @@ class ActorCritic(nn.Module):
             Flatten(),
             init_(nn.Linear(32 * (map_height) * (map_width), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
         )
@@ -125,7 +125,7 @@ class ActorCritic(nn.Module):
 
         self.actor_mlps = nn.Sequential(
             init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
@@ -137,7 +137,7 @@ class ActorCritic(nn.Module):
                     nn.init.constant_(param, 0)
                 elif 'weight' in name:
                     nn.init.orthogonal_(param)
-        self.layer_norm = nn.LayerNorm(normalized_shape=(128))
+        self.layer_norm = nn.LayerNorm(normalized_shape=(128),elementwise_affine=True)
 
         self.actor_out = nn.ModuleDict({
             UNIT_TYPE_NAME_WORKER: nn.Sequential(
@@ -161,7 +161,7 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(128, 128)), nn.ReLU(),
-                init_(nn.Linear(128, 128)), nn.ReLU(),
+                # init_(nn.Linear(128, 128)), nn.ReLU(),
                 init_(nn.Linear(128, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),

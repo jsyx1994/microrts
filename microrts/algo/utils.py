@@ -3,8 +3,8 @@ import torch
 import os
 import contextlib
 
-def load_model(path, map_size):
-    model = ActorCritic(map_size)
+def load_model(path, map_size, recurrent=False):
+    model = ActorCritic(map_size, recurrent=recurrent)
     model.load_state_dict(torch.load(path,map_location=torch.device("cpu")))
     return model
 

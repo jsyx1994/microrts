@@ -72,22 +72,23 @@ class Agent:
                 state=obs,
                 device=device,
                 mode=way,
-                hidden_states= self._hidden_states,
+                hidden_states=self._hidden_states,
                 )
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in samples]
 
         if self.brain.recurrent:
             for i, s in enumerate(samples): # figure out the subject of the hxses:
                 self._hidden_states[str(s[0].unit.ID)] = hxses[:][i][:]
-        # print(self._hidden_states)
-        # input()
+
         transition = {}
+        count = 0
         if mode == "train" and sampler is not network_simulator:
             # sample the transition in a correct way
             for u, a in network_unit_actions:
                 _id = str(u.ID)
                 if _id in self.units_on_working:
-                    # print(self._hidden_states.keys())
+                    # print(reward, a)
+                    # input()
                     transition = {
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
@@ -96,22 +97,18 @@ class Agent:
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         }
-
-                    # self._memorize(
-                        # obs_t=self.units_on_working[_id][0],
-                        # action=self.units_on_working[_id][1],
-                        # obs_tp1=obs,
-                        # reward=reward,
-                        # done=done,
-                    #     )
+                    count += 1
                 
                 self.units_on_working[str(u.ID)] = (obs, (u, a))
-            # push to agents' memory
-            if transition:
-                self._memory.push(**transition)
-        
-        if transition and callback:
-            callback(transition)
+                # push to agents' memory
+                # if transition:
+                #     self._memory.push(**transition)
+                #     transition.clear()
+                if transition and callback:
+                    callback(transition)
+                    # print(count)
+                    count = 0
+                    transition.clear()
         # print(unzip(*samples))
         # input()
 
