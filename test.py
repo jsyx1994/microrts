@@ -7,6 +7,7 @@ from microrts.algo.replay_buffer import ReplayBuffer
 from microrts.algo.model import ActorCritic
 import microrts.settings as settings
 from microrts.rts_wrapper.envs.utils import action_sampler_v1
+import argparse
 
 
 from microrts.algo.utils import load_model
