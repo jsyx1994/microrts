@@ -52,7 +52,12 @@ class NNBase(nn.Module):
 
 class ActorCritic(nn.Module):
 
-    def __init__(self, map_size, input_channel=44, unit_feature_size=20):
+    def __init__(self, 
+        map_size, 
+        input_channel=44,
+        unit_feature_size=20,
+        recurrent=False,
+        ):
         """[summary]
         
         Arguments:
@@ -63,6 +68,8 @@ class ActorCritic(nn.Module):
             unit_feature_size {int} -- [description] (default: {18})
         """
         super(ActorCritic, self).__init__()
+        
+        self.recurrent = recurrent
         map_height, map_width = map_size
         self.shared_out_size = 128
 
@@ -79,14 +86,15 @@ class ActorCritic(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=1)), nn.ReLU(),
-            init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)), nn.ReLU(),
+            # init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
             # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
 
             # nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
         )
+
         self.self_attn = nn.Sequential(
             Pic2Vector(),
             nn.TransformerEncoder(encoder_layer=nn.TransformerEncoderLayer(d_model=32, nhead=4), num_layers=1), nn.ReLU()
@@ -98,53 +106,52 @@ class ActorCritic(nn.Module):
             init_(nn.Linear(32 * (map_height) * (map_width), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             init_(nn.Linear(128, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
-            init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
-            # Ma
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
         )
 
-        # self.shared_to_actor = nn.Sequential(
-        #     init_(nn.Linear(self.shared_out_size, self.catter_size)), nn.ReLU(),
-        #     # init_(nn.Linear(128, self.catter_size)), nn.ReLU(),
-        # )
 
         self.critic_mlps = nn.Sequential(
             init_(nn.Linear(self.shared_out_size, 128)), nn.ReLU(),
             init_(nn.Linear(128, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
 
         )
         self.critic_out = init_(nn.Linear(128, 1))
 
+
+
         self.actor_mlps = nn.Sequential(
             init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 128)), nn.ReLU(),
             init_(nn.Linear(128, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
         )
+        if recurrent:
+            self.gru = nn.GRU(128, 128)
+            for name, param in self.gru.named_parameters():
+                if 'bias' in name:
+                    nn.init.constant_(param, 0)
+                elif 'weight' in name:
+                    nn.init.orthogonal_(param)
 
         self.actor_out = nn.ModuleDict({
             UNIT_TYPE_NAME_WORKER: nn.Sequential(
-                # nn.Linear(512, 256), nn.ReLU(),
-                nn.Linear(256, 128), nn.ReLU(),
-                nn.Linear(128, 64), nn.ReLU(),
-                nn.Linear(64, 64), nn.ReLU(),
-                nn.Linear(64, 64), nn.ReLU(),
-                nn.Linear(64, 32), nn.ReLU(),
-
-                nn.Linear(32, WorkerAction.__members__.items().__len__()),  # logits
+                init_(nn.Linear(128, 128)), nn.ReLU(),
+                init_(nn.Linear(128, WorkerAction.__members__.items().__len__())),
                 nn.Softmax(dim=1)
             ),
             UNIT_TYPE_NAME_BASE: nn.Sequential(
-                nn.Linear(256, 128), nn.ReLU(),
-                nn.Linear(128, 64), nn.ReLU(),
-                nn.Linear(64, 64), nn.ReLU(),
-                nn.Linear(64, 64), nn.ReLU(),
-                nn.Linear(64, 32), nn.ReLU(),
-                nn.Linear(32, BaseAction.__members__.items().__len__()),
+                # nn.Linear(256, 128), nn.ReLU(),
+                # nn.Linear(128, 64), nn.ReLU(),
+                # nn.Linear(64, 64), nn.ReLU(),
+                # nn.Linear(64, 64), nn.ReLU(),
+                # nn.Linear(64, 32), nn.ReLU(),
+                init_(nn.Linear(128, 128)), nn.ReLU(),
+                init_(nn.Linear(128, BaseAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_LIGHT: nn.Sequential(
@@ -152,7 +159,7 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
-                init_(nn.Linear(128, 128)), nn.ReLU(),
+                # init_(nn.Linear(128, 128)), nn.ReLU(),
                 init_(nn.Linear(128, 128)), nn.ReLU(),
                 init_(nn.Linear(128, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
@@ -168,10 +175,10 @@ class ActorCritic(nn.Module):
             )
         })
 
-    def forward(self, spatial_feature: Tensor, unit_feature: Tensor, actor_type='Worker'):
+    def forward(self, spatial_feature: Tensor, unit_feature: Tensor, actor_type='Worker',hxs = None):
         value = self.critic_forward(spatial_feature)
-        pi = self.actor_forward(actor_type, spatial_feature, unit_feature)
-        return value, pi
+        pi, hxs_n = self.actor_forward(actor_type, spatial_feature, unit_feature, hxs)
+        return value, pi, hxs_n
 
     def _shared_forward(self, spatial_feature):
         x = self.shared_conv(spatial_feature)
@@ -195,15 +202,28 @@ class ActorCritic(nn.Module):
         x = self.critic_out(x)
         return x
 
-    def actor_forward(self, actor_type: str, spatial_feature: Tensor, unit_feature: Tensor):
-
+    def actor_forward(self, actor_type: str, spatial_feature: Tensor, unit_feature: Tensor, hxses:Tensor=None):
+        hxs = None
         x = self._shared_forward(spatial_feature)
         # x = self.shared_to_actor(x)
+        if self.recurrent:
+            x, hxs =self.gru(x.unsqueeze(0), hxses)
+            x = x.squeeze(0)
+
+        x = nn.LayerNorm(x.size()[1:])(x)
 
         x = torch.cat([x, unit_feature], dim=1)
         x = self.actor_mlps(x)
+        # x, hxs =self.gru(x.unsqueeze(0), torch.randn(1,x.size(0),128))
+
+        # print(x)
+        # # self.gru(x, torch.Tensor())
+        # print(x.shape)
+        # input()
+
         probs = self.actor_out[actor_type](x)
-        return probs
+        # print(probs)
+        return probs, hxs
     
     def evaluate_actions(self, actor_type: str, states: Tensor, unit_feature: Tensor, actions):
         x = self._shared_forward(states)
@@ -220,7 +240,7 @@ class ActorCritic(nn.Module):
         if actor_type not in self.activated_agents:
             return AGENT_ACTIONS_MAP[actor_type].DO_NONE
 
-        probs = self.actor_forward(actor_type, spatial_feature, unit_feature)
+        probs, hxs = self.actor_forward(actor_type, spatial_feature, unit_feature)
         # print(prob)
         return list(AGENT_ACTIONS_MAP[actor_type])[torch.argmax(probs).item()]
 
@@ -228,7 +248,7 @@ class ActorCritic(nn.Module):
         if actor_type not in self.activated_agents:
             return AGENT_ACTIONS_MAP[actor_type].DO_NONE
 
-        probs = self.actor_forward(actor_type, spatial_feature, unit_feature)
+        probs, hsx = self.actor_forward(actor_type, spatial_feature, unit_feature)
         # print(probs)
         m = Categorical(probs)
         idx = m.sample().item()

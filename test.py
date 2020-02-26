@@ -71,7 +71,7 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
     players = env.players
  
     if start_from_scratch:
-        nn = ActorCritic(env.map_size)
+        nn = ActorCritic(env.map_size,recurrent=True)
     else:
         nn = load_model(nn_path, env.map_size)
 
@@ -92,7 +92,7 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
 
     # optimizer = torch.optim.RMSprop(nn.parameters(), lr=1e-5, weight_decay=1e-7)
 
-    algo = A2C(nn,lr=1e-4, weight_decay=3e-6, entropy_coef=.04, value_loss_coef=.1, log_interval=5, gamma=.99)
+    algo = A2C(nn,lr=1e-4, weight_decay=3e-6, entropy_coef=.08, value_loss_coef=.1, log_interval=5, gamma=.99)
     # update_step = 64 #+ agents[0].random_rollout_steps
     # step = 0
     for epi_idx in range(env.max_episodes):
@@ -103,14 +103,14 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
         while not obses_t[0].done:
             actions = []
             for i in range(len(players)):
-                action = agents[i].think(callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
+                action = agents[i].think(callback=memo_inserter,way="stochastic", obses=obses_t[i], accelerator=device, mode="train")
                 actions.append(action)
             obses_tp1 = env.step(actions)
             # step += 1
 
             if obses_tp1[0].done:
                 for agent in agents:
-                    agent.sum_up(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+                    agent.sum_up(callback=memo_inserter,way="stochastic", obses=obses_tp1[i], accelerator=device, mode="train")
                     agent.forget()
                 
 

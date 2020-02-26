@@ -8,7 +8,14 @@ from microrts.algo.agents import Agent
 from microrts.rts_wrapper.envs.utils import get_config
 import argparse
 
-def evaluate(env_id, ai2_type="socketAI", nn_path=None, fast_forward=False, episodes=1000):
+def evaluate(
+        env_id, 
+        ai2_type="socketAI",
+        nn_path=None, 
+        fast_forward=False, 
+        episodes=1000,
+        stochastic=True,
+        ):
     """self play program
     
     Arguments:
@@ -29,6 +36,9 @@ def evaluate(env_id, ai2_type="socketAI", nn_path=None, fast_forward=False, epis
     if fast_forward:
         config.render = 0
         config.period = 1
+    else:
+        config.render = 1
+        config.period = 20
     env = gym.make(env_id)
     # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
 
@@ -64,7 +74,10 @@ def evaluate(env_id, ai2_type="socketAI", nn_path=None, fast_forward=False, epis
             for i in range(len(players)):
                 # actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
                 # _st = time.time()
-                action = agents[i].think(obses=obses_t[i], accelerator=device,mode="eval")
+                if stochastic:
+                    action = agents[i].think(obses=obses_t[i], way="stochastic", accelerator=device,mode="eval")
+                else:
+                    action = agents[i].think(obses=obses_t[i], way="deterministic", accelerator=device,mode="eval")
                 if not fast_forward:
                     print(action)
                     input()
@@ -85,13 +98,13 @@ def evaluate(env_id, ai2_type="socketAI", nn_path=None, fast_forward=False, epis
     return winning_count
 
 if __name__ == "__main__":
-    # python3 evaluate.py --model-path rl2v2.pth --fast-forward True --episodes 100 
+    # python3 evaluate.py --model-path rl2v2.pth --fast-forward True --episodes 100
     parser = argparse.ArgumentParser()
     parser.add_argument(
         '--model-path', help='path of the model to be evaluated')
     parser.add_argument(
         '--fast-forward',
-        action='store_true',
+        type=bool,
         default=False
     )
     parser.add_argument(
@@ -100,7 +113,12 @@ if __name__ == "__main__":
         type=int,
         default=1000,
     )
+    parser.add_argument(
+        '--stc',
+        type=bool,
+        default=False
+    )
     args = parser.parse_args()
     print(args.fast_forward)
-    winning_count = evaluate("singleBattle-v0","NaiveMCTS", nn_path=os.path.join(settings.models_dir, args.model_path), fast_forward=args.fast_forward, episodes=args.episodes)
+    winning_count = evaluate("singleBattle-v0","socketAI", nn_path=os.path.join(settings.models_dir, args.model_path), fast_forward=args.fast_forward, episodes=args.episodes,stochastic=args.stc)
     print(winning_count)
