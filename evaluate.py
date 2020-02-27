@@ -134,7 +134,7 @@ if __name__ == "__main__":
     print(args.fast_forward)
     winning_count = evaluate(
         env_id=args.env_id,
-        ai2_type="NaiveMCTS", 
+        ai2_type="socketAI", 
         nn_path=os.path.join(settings.models_dir, args.model_path), 
         fast_forward=args.fast_forward, 
         episodes=args.episodes,
