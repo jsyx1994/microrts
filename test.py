@@ -16,13 +16,7 @@ from microrts.algo.replay_buffer import ReplayBuffer
 from microrts.algo.a2c import A2C
 from microrts.algo.agents import Agent
 
-def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
-    """self play program
-    
-    Arguments:
-        nn_path {str} -- path to model, if None, start from scratch
-        map_size {tuple} -- (height, width)
-    """     
+def self_play(args):
     def logger(iter_idx, results):
         for k in results:
             writer.add_scalar(k, results[k], iter_idx)
@@ -33,21 +27,21 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
         memory.push(**transitions)
     
     
-    get_config(env_id).render = render
-    get_config(env_id).ai2_type = opponent
+    get_config(args.env_id).render = args.render
+    get_config(args.env_id).ai2_type = args.opponent
 
-    env = gym.make(env_id)
+    env = gym.make(args.env_id)
     # assert env.ai1_type == "socketAI" and env.ai2_type == "socketAI", "This env is not for self-play"
     memory = ReplayBuffer(10000)
-
+    nn_path = args.model_path
     start_from_scratch = nn_path is None
     
     players = env.players
  
     if start_from_scratch:
-        nn = ActorCritic(env.map_size)
+        nn = ActorCritic(env.map_size, recurrent=args.recurrent)
     else:
-        nn = load_model(nn_path, env.map_size)
+        nn = load_model(nn_path, env.map_size, args.recurrent)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # device = "cpu"
@@ -59,7 +53,7 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
     
 
     agents = [Agent(model=nn) for _ in range(env.players_num)]
-    algo = A2C(nn,lr=1e-4, weight_decay=3e-6, entropy_coef=.08, value_loss_coef=.1, log_interval=5, gamma=.99)
+    algo = A2C(nn,lr=args.lr, weight_decay=3e-6, entropy_coef=args.entropy, value_loss_coef=args.value_loss_coef, log_interval=5, gamma=args.gamma)
     # update_step = 64 #+ agents[0].random_rollout_steps
     # step = 0
     for epi_idx in range(env.max_episodes):
@@ -73,26 +67,19 @@ def self_play(env_id, render=0, opponent="socketAI", nn_path=None):
                 action = agents[i].think(callback=memo_inserter,way="stochastic", obses=obses_t[i], accelerator=device, mode="train")
                 actions.append(action)
             obses_tp1 = env.step(actions)
-            # step += 1
-
             if obses_tp1[0].done:
                 for agent in agents:
                     agent.sum_up(callback=memo_inserter,way="stochastic", obses=obses_tp1[i], accelerator=device, mode="train")
                     agent.forget()
-                
-
             # if len(memory) >= update_step:
             # # if step >= 5:
             #     algo.update(memory, iter_idx, device, logger)
             #     iter_idx += 1
                 # step = 0
 
-
             # just for analisis
             for i in range(len(players)):
                 players_G0[i] += obses_tp1[i].reward
-            
-
             obses_t = obses_tp1
 
         algo.update(memory, iter_idx, device, logger)
@@ -117,20 +104,17 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--env-id",
+        default="singleBattle-v0"
     )
     parser.add_argument(
-        '--model-path', help='path of the model to be loaded')
+        '--model-path', help='path of the model to be loaded',
+        default=None
+    )
     parser.add_argument(
         '--episodes',
         # default=10e6,
         type=int,
-        default=10e8,
-    )
-    parser.add_argument(
-        '-stc',
-        # type=bool,
-        action="store_true",
-        default=False
+        default=10e4,
     )
     parser.add_argument(
         '--recurrent',
@@ -138,6 +122,37 @@ if __name__ == '__main__':
         # type=bool,
         default=False,
     )
+    parser.add_argument(
+        '-lr',
+        type=float,
+        default=1e-4,
+    )
+    parser.add_argument(
+        '--entropy',
+        type=float,
+        default=0.04,
+    )
+    parser.add_argument(
+        '--value_loss_coef',
+        type=float,
+        default=0.1
+    )
+    parser.add_argument(
+        '--gamma',
+        type=float,
+        default=0.99
+    )
+    parser.add_argument(
+        '--render',
+        type=int,
+        default=0
+    )
+    parser.add_argument(
+        '--opponent',
+        default="socketAI"
+    )
+    args = parser.parse_args()
+    print(args)
     torch.manual_seed(0)
-    self_play("singleBattle-v0", render=0, opponent="socketAI")
+    self_play(args)
     # self_play(nn_path=os.path.join(settings.models_dir, "rl999.pth"))

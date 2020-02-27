@@ -778,8 +778,8 @@ def state_encoder_v2(gs: GameState, player):
             # 44
 
             # channel_under_attack,     # 2
-            channel_action_type,      # 8
-            channel_action_para,      # 6
+            # channel_action_type,      # 8
+            # channel_action_para,      # 6
             # channel_action_produce_type,     # 8
             # channel_action_completion_ratio, # 6
             # 30
