@@ -41,7 +41,7 @@ def self_play(args):
     if start_from_scratch:
         nn = ActorCritic(env.map_size, recurrent=args.recurrent)
     else:
-        nn = load_model(nn_path, env.map_size, args.recurrent)
+        nn = load_model(os.path.join(settings.models_dir, nn_path), env.map_size, args.recurrent)
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # device = "cpu"
@@ -85,18 +85,19 @@ def self_play(args):
         algo.update(memory, iter_idx, device, logger)
         iter_idx += 1
         if (epi_idx + 1) % 100 == 0:
-            torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl" + str(epi_idx) + ".pth"))
+            torch.save(nn.state_dict(), os.path.join(settings.models_dir, args.saving_prefix + str(epi_idx) + ".pth"))
 
-        print(players_G0)
+        # print(players_G0)
         winner = obses_tp1[0].info["winner"]
-
+        writer.add_scalar("P0_rewards", players_G0[0]/obses_t[i].info["time_stamp"], epi_idx)
+        writer.add_scalar("P1_rewards", players_G0[1]/obses_t[i].info["time_stamp"], epi_idx)
         writer.add_scalar("Return_diff", players_G0[0] - players_G0[1] , epi_idx)
         writer.add_scalar("TimeStamp", obses_t[i].info["time_stamp"]  , epi_idx)
 
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
         
     print(env.setup_commands)
-    torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl.pth"))
+    torch.save(nn.state_dict(), os.path.join(settings.models_dir, args.saving_prefix + ".pth"))
 
 
 
@@ -150,6 +151,10 @@ if __name__ == '__main__':
     parser.add_argument(
         '--opponent',
         default="socketAI"
+    )
+    parser.add_argument(
+        "--saving-prefix",
+        default='rl',
     )
     args = parser.parse_args()
     print(args)

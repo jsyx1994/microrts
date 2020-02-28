@@ -88,7 +88,7 @@ class ActorCritic(nn.Module):
         self.shared_conv = nn.Sequential(
             init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
-            # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
 
@@ -103,9 +103,9 @@ class ActorCritic(nn.Module):
                                constant_(x, 0))
         self.shared_linear = nn.Sequential(
             Flatten(),
-            init_(nn.Linear(32 * (map_height) * (map_width), 128)), nn.ReLU(),
+            init_(nn.Linear(16 * (map_height) * (map_width), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
-            # init_(nn.Linear(128, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
         )
@@ -210,8 +210,7 @@ class ActorCritic(nn.Module):
         if self.recurrent:
             x, hxs =self.gru(x.unsqueeze(0), hxses)
             x = x.squeeze(0)
-
-        x = self.layer_norm(x)
+            # x = self.layer_norm(x)
 
         x = torch.cat([x, unit_feature], dim=1)
         x = self.actor_mlps(x)

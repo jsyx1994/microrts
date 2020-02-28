@@ -130,11 +130,15 @@ if __name__ == "__main__":
         # type=bool,
         default=False,
     )
+    parser.add_argument(
+        '--opponent',
+        default='Passive'
+    )
     args = parser.parse_args()
-    print(args.fast_forward)
+    print(args)
     winning_count = evaluate(
         env_id=args.env_id,
-        ai2_type="socketAI", 
+        ai2_type=args.opponent, 
         nn_path=os.path.join(settings.models_dir, args.model_path), 
         fast_forward=args.fast_forward, 
         episodes=args.episodes,
