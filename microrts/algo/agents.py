@@ -1,16 +1,40 @@
 
 from microrts.rts_wrapper.envs.utils import action_sampler_v2, get_action_index, action_sampler_v1,network_simulator
 from microrts.algo.replay_buffer import ReplayBuffer
+import numpy as np
+
+class FrameBuffer:
+    def __init__(self, size=16, shape=(55,4,4)):
+        self._storage = []
+        self._maxsize = size
+        self._next_idx = 0        # next pos to store the new data
+        self._shape = shape
+
+        self._storage = np.zeros((size, *shape))
+        pass
+    
+    def refresh(self):
+        self._storage = np.zeros((self._maxsize, *self._shape))
+
+    def __len__(self):
+        return len(self._storage)
+    
+    def push(self, frame):
+        self._storage[:-1] = self._storage[1:]
+        self._storage[-1] = frame
+        # if self._next_idx >= len(self._storage):
+        #     self._storage.append(frame)
+        # else:
+        #     self._storage[self._next_idx] = frame
+        # self._next_idx = (self._next_idx + 1) % self._maxsize
+    def fetch(self):
+        return self._storage.reshape(-1, *self._shape[-2:])
+
 class Agent:
-
-    brain = None
-    units_on_working = {}
-    steps = 0
-    _memory = None
-    _hidden_states = {} # id -> hidden_states
-
-
     def __init__(self, model, memory_size=10000, random_rollout_steps=128):
+        self.units_on_working = {}
+        self._hidden_states = {} # id -> hidden_states
+        self._frame_buffer = FrameBuffer(size=16)
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
         self._memory = ReplayBuffer(memory_size)
@@ -19,6 +43,8 @@ class Agent:
         self.units_on_working.clear()
         self.steps = 0
         self._hidden_states.clear()
+        self._frame_buffer.refresh()
+
     
     def get_memory(self):
         return self._memory
@@ -58,6 +84,12 @@ class Agent:
         
         del kwargs
 
+        # self._frame_buffer.push(obs)
+
+
+        # obs = self._frame_buffer.fetch()
+
+
         # import time
 
         # st = time.time()
@@ -65,7 +97,7 @@ class Agent:
         # print(sampler)
         # input()
         sampler = action_sampler_v2
-        self.steps += 1
+        # self.steps += 1
         samples, hxses = sampler(
                 info=info,
                 model=self.brain,

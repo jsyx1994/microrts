@@ -131,7 +131,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--entropy',
         type=float,
-        default=0.04,
+        default=0.01,
     )
     parser.add_argument(
         '--value_loss_coef',
@@ -146,7 +146,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--render',
         type=int,
-        default=0
+        default=1
     )
     parser.add_argument(
         '--opponent',

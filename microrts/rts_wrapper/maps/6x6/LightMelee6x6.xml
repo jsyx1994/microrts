@@ -1,0 +1,35 @@
+<rts.PhysicalGameState width="6" height="6">
+  <terrain>000000000000000000000000000000000000</terrain>
+  <players>
+    <rts.Player ID="0" resources="5">
+    </rts.Player>
+    <rts.Player ID="1" resources="5">
+    </rts.Player>
+  </players>
+  <units>
+    <rts.units.Unit type="Light" ID="46" player="0" x="0" y="0" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="47" player="1" x="5" y="5" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="49" player="1" x="5" y="3" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="51" player="1" x="3" y="5" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="53" player="1" x="4" y="4" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="59" player="0" x="2" y="0" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="61" player="0" x="1" y="1" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="62" player="0" x="0" y="2" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="65" player="0" x="4" y="0" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="66" player="0" x="0" y="4" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="67" player="1" x="1" y="5" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+    <rts.units.Unit type="Light" ID="68" player="1" x="5" y="1" resources="0" hitpoints="4" >
+    </rts.units.Unit>
+  </units>
+</rts.PhysicalGameState>

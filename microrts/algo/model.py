@@ -86,13 +86,13 @@ class ActorCritic(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=2)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
             init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
 
-            # nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
+            nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
         )
 
         self.self_attn = nn.Sequential(
@@ -125,7 +125,7 @@ class ActorCritic(nn.Module):
 
         self.actor_mlps = nn.Sequential(
             init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 128)), nn.ReLU(),
-            # init_(nn.Linear(128, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
