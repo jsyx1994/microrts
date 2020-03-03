@@ -88,11 +88,11 @@ class ActorCritic(nn.Module):
         self.shared_conv = nn.Sequential(
             init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=2)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
-            init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            init_(nn.Conv2d(32, 16, 2)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
 
-            nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
+            # nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
         )
 
         self.self_attn = nn.Sequential(
@@ -103,10 +103,10 @@ class ActorCritic(nn.Module):
                                constant_(x, 0))
         self.shared_linear = nn.Sequential(
             Flatten(),
-            init_(nn.Linear(16 * (map_height) * (map_width), 128)), nn.ReLU(),
+            init_(nn.Linear(16 * (map_height-2) * (map_width-2), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             init_(nn.Linear(128, 128)), nn.ReLU(),
-            # init_(nn.Linear(128, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
         )
 
@@ -114,7 +114,7 @@ class ActorCritic(nn.Module):
         self.critic_mlps = nn.Sequential(
             init_(nn.Linear(self.shared_out_size, 128)), nn.ReLU(),
             init_(nn.Linear(128, 128)), nn.ReLU(),
-            # init_(nn.Linear(128, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
 
@@ -160,8 +160,8 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
-                # init_(nn.Linear(128, 128)), nn.ReLU(),
-                # init_(nn.Linear(128, 128)), nn.ReLU(),
+                init_(nn.Linear(128, 128)), nn.ReLU(),
+                init_(nn.Linear(128, 128)), nn.ReLU(),
                 init_(nn.Linear(128, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),

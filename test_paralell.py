@@ -51,11 +51,11 @@ def play(env_id, nn_path=None):
     # device = "cpu"
     print(device)
     # input()
-    nn.share_memory()
+    # nn.share_memory()
 
     nn.to(device)
 
-    num_process = 4
+    num_process = 2
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
 
 
@@ -80,7 +80,7 @@ def play(env_id, nn_path=None):
     # print(len(agents))
     # input()
     update_steps = 5
-    algo = A2C(nn, 1e-4, weight_decay=3e-6, log_interval=5)
+    algo = A2C(nn, 1e-4,entropy_coef=0.04, weight_decay=3e-6, log_interval=5)
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
