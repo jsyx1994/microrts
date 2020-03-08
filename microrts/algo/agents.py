@@ -4,13 +4,13 @@ from microrts.algo.replay_buffer import ReplayBuffer
 import numpy as np
 
 class FrameBuffer:
-    def __init__(self, size=16, shape=(55,4,4)):
-        self._storage = []
+    def __init__(self, map_size, feature_size,size=8):
         self._maxsize = size
         self._next_idx = 0        # next pos to store the new data
-        self._shape = shape
+        h, w = map_size
+        self._shape = (feature_size, h, w)
 
-        self._storage = np.zeros((size, *shape))
+        self._storage = np.zeros((size, feature_size, h, w))
         pass
     
     def refresh(self):
@@ -34,10 +34,12 @@ class Agent:
     def __init__(self, model, memory_size=10000, random_rollout_steps=128):
         self.units_on_working = {}
         self._hidden_states = {} # id -> hidden_states
-        self._frame_buffer = FrameBuffer(size=16)
+        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=48)
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
         self._memory = ReplayBuffer(memory_size)
+
+        # self.last = []
 
     def forget(self):
         self.units_on_working.clear()
@@ -84,10 +86,20 @@ class Agent:
         
         del kwargs
 
-        # self._frame_buffer.push(obs)
 
+        # print(info['time_stamp'])
+        self._frame_buffer.push(obs)
 
-        # obs = self._frame_buffer.fetch()
+        # if self.last is not None:
+        #     print(self.last == obs)
+        #     print('_---------------------------_')
+
+        obs = self._frame_buffer.fetch()
+        # self.last = obs
+        # input()
+        import torch
+        # print(self.brain.critic_forward(torch.from_numpy(obs).float().unsqueeze(0)))
+        # input()
 
 
         # import time
@@ -124,14 +136,15 @@ class Agent:
                     transition = {
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
-                        "obs_tp1":obs,
+                        "obs_tp1":np.copy(obs),
                         "reward":reward,
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         }
+                    # print(self.brain.critic_forward(torch.from_numpy(transition['obs_t']).float().unsqueeze(0)))
                     count += 1
                 
-                self.units_on_working[str(u.ID)] = (obs, (u, a))
+                self.units_on_working[str(u.ID)] = (np.copy(obs), (u, a))
                 # push to agents' memory
                 # if transition:
                 #     self._memory.push(**transition)

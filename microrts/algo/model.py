@@ -54,7 +54,7 @@ class ActorCritic(nn.Module):
 
     def __init__(self, 
         map_size, 
-        input_channel=44,
+        input_channel=48 * 16,
         unit_feature_size=20,
         recurrent=False,
         ):
@@ -86,9 +86,9 @@ class ActorCritic(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=2)), nn.ReLU(),
-            # init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
-            init_(nn.Conv2d(32, 16, 2)), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=1)), nn.ReLU(),
+            init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
+            init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
 
@@ -103,18 +103,18 @@ class ActorCritic(nn.Module):
                                constant_(x, 0))
         self.shared_linear = nn.Sequential(
             Flatten(),
-            init_(nn.Linear(16 * (map_height-2) * (map_width-2), 128)), nn.ReLU(),
+            init_(nn.Linear(16 * (map_height) * (map_width), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             init_(nn.Linear(128, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
         )
 
 
         self.critic_mlps = nn.Sequential(
             init_(nn.Linear(self.shared_out_size, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
 
@@ -125,7 +125,7 @@ class ActorCritic(nn.Module):
 
         self.actor_mlps = nn.Sequential(
             init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 128)), nn.ReLU(),
-            init_(nn.Linear(128, 128)), nn.ReLU(),
+            # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
@@ -137,7 +137,7 @@ class ActorCritic(nn.Module):
                     nn.init.constant_(param, 0)
                 elif 'weight' in name:
                     nn.init.orthogonal_(param)
-        self.layer_norm = nn.LayerNorm(normalized_shape=(128),elementwise_affine=True)
+        self.layer_norm = nn.LayerNorm(normalized_shape=(128),elementwise_affine=False)
 
         self.actor_out = nn.ModuleDict({
             UNIT_TYPE_NAME_WORKER: nn.Sequential(
@@ -160,8 +160,8 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
-                init_(nn.Linear(128, 128)), nn.ReLU(),
-                init_(nn.Linear(128, 128)), nn.ReLU(),
+                # init_(nn.Linear(128, 128)), nn.ReLU(),
+                # init_(nn.Linear(128, 128)), nn.ReLU(),
                 init_(nn.Linear(128, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
@@ -176,7 +176,7 @@ class ActorCritic(nn.Module):
             )
         })
 
-    def forward(self, spatial_feature: Tensor, unit_feature: Tensor, actor_type='Worker',hxs = None):
+    def forward(self, spatial_feature: Tensor, unit_feature: Tensor, actor_type, hxs = None):
         value = self.critic_forward(spatial_feature)
         pi, hxs_n = self.actor_forward(actor_type, spatial_feature, unit_feature, hxs)
         return value, pi, hxs_n
@@ -186,6 +186,8 @@ class ActorCritic(nn.Module):
         # x = self.self_attn(x)
 
         x = self.shared_linear(x)
+        x = self.layer_norm(x)
+
         # print(x.shape)
         # input()
         return x

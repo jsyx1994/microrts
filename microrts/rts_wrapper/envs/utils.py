@@ -235,7 +235,7 @@ def signal_wrapper(raw):
     # gs_wrapper = GsWrapper(**json.loads(raw.split('\n')[1]))
     # print(raw)
     # input()
-    observation = state_encoder_v2(gs_wrapper.gs, curr_player)
+    observation = state_encoder_v3(gs_wrapper.gs, curr_player)
     reward = gs_wrapper.reward
     done = gs_wrapper.done
     # self.game_time = gs_wrapper.gs.time
@@ -783,6 +783,126 @@ def state_encoder_v2(gs: GameState, player):
             # channel_action_produce_type,     # 8
             # channel_action_completion_ratio, # 6
             # 30
+                                    
+        ),
+    )
+    # print(spatial_features.shape)
+    # input()
+    return spatial_features
+
+def state_encoder_v3(gs: GameState, player):
+    """Encode the state for player given Game state from java
+    
+    Arguments:
+        gs {GameState} -- Game state from java
+        player {int} -- current player
+    
+    Returns:
+        np.array -- features
+    """
+    current_player = player
+    # AGENT_COLLECTION
+    pgs = gs.pgs
+    w = pgs.width
+    h = pgs.height
+    units = pgs.units
+    p1_info, p2_info = gs.pgs.players
+    my_resources  = p1_info.resources if current_player == p1_info.ID else p2_info.resources
+    opp_resources = p2_info.resources if current_player == p1_info.ID else p1_info.resources
+
+    # whether the box  walkable
+    # channel_whether_walkable = np.zeros((2, h, w))
+    cannot_walk = []
+    can_walk = []
+    for x in pgs.terrain:
+        if int(x) == 0:
+            cannot_walk.append(0)
+            can_walk.append(1)
+        else:
+            cannot_walk.append(1)
+            can_walk.append(0)
+    channel_whether_walkable = np.array([cannot_walk, can_walk]).reshape((2, h, w))
+
+    # channel_terrain = np.array([int(x) for x in pgs.terrain]).reshape((1, h, w))
+
+    # resource number in the box (Discretized)
+    channel_resource_size = np.zeros((8, h, w))
+
+    # which type of units? the last bit indicates empty
+    channel_units_type    = np.zeros((len(UNIT_COLLECTION), h, w))
+
+    # whether my units occupy the box? not occupied, occupied
+    channel_whether_mine = np.zeros((2, h, w))
+    channel_whether_mine[0,:,:] = 1 # default: not
+
+    # Who am I?
+    channel_player = np.zeros((2, h, w))
+    channel_player[current_player,:,:] = 1
+
+    # hp ratio range None, 0%~10%, 10%~20%, 20%~40%, 40%~80%, 80%~100% 
+    channel_hp_ratio = np.zeros((6, h, w))
+
+    channel_my_resources = np.zeros((8, h, w))
+    channel_opp_resources = np.zeros((8, h, w))
+    _one_hot_my_resource_pos  = list(resource_encoder(my_resources)).index(1)
+    _one_hot_opp_resource_pos = list(resource_encoder(opp_resources)).index(1)
+    channel_my_resources[_one_hot_my_resource_pos,:,:]  = 1
+    channel_my_resources[_one_hot_opp_resource_pos,:,:] = 1
+
+
+    id_location_map = {}
+    for unit in units:
+        _owner = unit.player
+        _type = unit.type
+        _x, _y = unit.x, unit.y
+        _resource_carried = unit.resources
+        _hp = unit.hitpoints
+        _id = unit.ID
+
+        _one_hot_hp_ratio_pos = hp_ratio_encoder(_hp / UTT_DICT[_type].hp)
+        channel_hp_ratio[_one_hot_hp_ratio_pos][_x][_y] = 1
+
+        _one_hot_resource_pos = list(resource_encoder(_resource_carried)).index(1)
+        channel_resource_size[_one_hot_resource_pos][_x][_y] = 1
+
+        _one_hot_type_pos = UNIT_COLLECTION.index(_type)
+        channel_units_type[_one_hot_type_pos][_x][_y] = 1
+
+        if _owner == current_player:
+            channel_whether_mine[1][_x][_y] = 1
+            channel_whether_mine[0][_x][_y] = 0 # unselected
+
+        id_location_map[_id] = unit
+
+    
+    channel_action_trend = np.zeros((5 , h, w))
+    
+    for action in gs.actions:
+        _id = action.ID # the executor id of the action
+        _action = action.action
+        _unit = id_location_map[_id]
+        _x, _y = _unit.x, _unit.y
+        atk_x, atk_y = _action.x, _action.y  # the box location under attack
+        _one_hot_action_trend_pos = game_action_translator(_unit, _action)
+        channel_action_trend[_one_hot_action_trend_pos][_x][_y] = 1 
+
+
+    spatial_features = np.vstack(
+        (
+            channel_whether_walkable, # 2
+            channel_resource_size,    # 8
+            channel_hp_ratio,         # 6
+            channel_units_type,       # 7
+
+            channel_whether_mine,     # 2
+            channel_my_resources,     # 8
+            channel_opp_resources,    # 8
+            channel_player,           # 2
+            # 43
+
+            channel_action_trend      # 5
+            
+            # 48 
                                     
         ),
     )

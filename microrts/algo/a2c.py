@@ -45,6 +45,8 @@ class A2C:
                 else:
                     value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
                 # m = torch.distributions.Categorical(probs=probs)
+                # print(states.shape)
+                # input()
                 print(value)
                 value_next = nn.critic_forward(next_states).detach()
 
