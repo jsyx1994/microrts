@@ -136,7 +136,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--value_loss_coef',
         type=float,
-        default=0.1
+        default=0.5
     )
     parser.add_argument(
         '--gamma',

@@ -87,27 +87,14 @@ class Agent:
         del kwargs
 
 
-        # print(info['time_stamp'])
-        self._frame_buffer.push(obs)
+        # self._frame_buffer.push(obs)
 
-        # if self.last is not None:
-        #     print(self.last == obs)
-        #     print('_---------------------------_')
-
-        obs = self._frame_buffer.fetch()
-        # self.last = obs
-        # input()
-        import torch
+        # obs = self._frame_buffer.fetch()
+        # import torch
         # print(self.brain.critic_forward(torch.from_numpy(obs).float().unsqueeze(0)))
         # input()
 
 
-        # import time
-
-        # st = time.time()
-        # sampler = action_sampler_v2 if self.random_rollout_steps <= self.steps or mode == "eval" else network_simulator
-        # print(sampler)
-        # input()
         sampler = action_sampler_v2
         # self.steps += 1
         samples, hxses = sampler(
@@ -126,8 +113,35 @@ class Agent:
 
         transition = {}
         count = 0
+
+
+
         if mode == "train" and sampler is not network_simulator:
             # sample the transition in a correct way
+
+            # check dead units and insert transaction
+            # condition that unit is on working but is not on battlefield, update. Action cancel dead
+            units_on_field = info["units_on_field"]
+            key_to_del = []
+            for _id in self.units_on_working:
+                if int(_id) not in units_on_field and callback:
+                    # print("yes")
+                    # input()
+                    key_to_del.append(_id)
+                    print(done, reward)
+                    # input()
+                    callback({
+                        "obs_t":self.units_on_working[_id][0],
+                        "action":self.units_on_working[_id][1],
+                        "obs_tp1":np.copy(obs),
+                        "reward":reward,
+                        "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
+                        "done":done,
+                    })
+            for k in key_to_del:
+                del self.units_on_working[k]
+
+
             for u, a in network_unit_actions:
                 _id = str(u.ID)
                 if _id in self.units_on_working:
@@ -141,6 +155,7 @@ class Agent:
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         }
+                    # print(reward)
                     # print(self.brain.critic_forward(torch.from_numpy(transition['obs_t']).float().unsqueeze(0)))
                     count += 1
                 

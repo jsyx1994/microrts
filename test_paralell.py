@@ -52,35 +52,15 @@ def play(env_id, nn_path=None):
     print(device)
     # input()
     # nn.share_memory()
-
     nn.to(device)
-
-    num_process = 2
+    num_process = 4
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
-
-
     import time
-
-    # action = agent.think(callback=memo_inserter, obses=obses_n[0][0], accelerator=device, mode="train")
-    # o = obses_n[0][0]
-    # print(o)
-    # st = time.time()
-    # # action = agents[i][j].think(callback=memo_i nserter, obses=obses_n[i][j], accelerator=device, mode="train")
-    # action = agent.think(callback=memo_inserter, obses=o, accelerator=device, mode="train")
-    # print((time.time() - st))
-    # input()
-
-
     frames = 0
     st = time.time()
-
     obses_n = envs.reset()
-    # agents = [[Agent(nn) for _ in obs] for obs in obses_n]
-    # print(agents[1][0].brain is agents[4][0].brain)
-    # print(len(agents))
-    # input()
-    update_steps = 5
-    algo = A2C(nn, 1e-4,entropy_coef=0.04, weight_decay=3e-6, log_interval=5)
+    update_steps = 16
+    algo = A2C(nn, 1e-4,entropy_coef=0.04, weight_decay=1e-5, log_interval=1)
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
@@ -88,14 +68,12 @@ def play(env_id, nn_path=None):
     # input()
     while 1:
         time_stamp  = []
-
         actions_n = []
         for i in range(num_process):
             action_i = []
             for j in range(len(obses_n[i])):
-                if obses_n[i][j].reward > 0:
-                    print(obses_n[i][j].reward)
-                
+                # if obses_n[i][j].reward > 0:
+                #     print(obses_n[i][j].reward)
                 if not obses_n[i][j].done:
                     action = agents[i][j].think(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                 else:
@@ -104,23 +82,17 @@ def play(env_id, nn_path=None):
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
                     agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     agents[i][j].forget()
-                    print(i, j)
-
+                    # print(i, j)
                 action_i.append(action)
+                if (epi_idx + 1) % 100 == 0:
+                    torch.save(nn.state_dict(), os.path.join(settings.models_dir, 'rl_' + str(int(epi_idx)) + ".pth"))
             actions_n.append(action_i)
-        
-        # print(action)
-        # input()
+           
         
         if time_stamp:
             # print("logged", iter_idx)
             writer.add_scalar("TimeStamp", sum(time_stamp) / (len(time_stamp)), epi_idx)
         
-        # for i in range(num_process):
-        #     for j in range(len(obses_n[i])):
-        #         if obses_n[i][j].done:
-        #             actions_n[i][j] = "reset"
-
         obses_n = envs.step(actions_n)
         # print(time.time() - _st)
 
@@ -136,35 +108,11 @@ def play(env_id, nn_path=None):
         #     algo.update(memory, iter_idx, callback=logger, device=device)
         #     iter_idx += 1
         
-        if frames == 1000:
+        if frames >= 1000:
             print("fps", frames * num_process / (time.time() - st))
             frames = 0
             st = time.time()
             # torch.save(nn.state_dict(), os.path.join(settings.models_dir, "rl.pth"))
-
-            
-
-
-                    # print("done")
-                # if obs[0].done:
-                #     print("DONE")
-                # end_time += obs[0].info["time_stamp"]
-                # end_num += 1
-        # if time_stamp:
-        #     # print("logged", iter_idx)
-        #     writer.add_scalar("TimeStamp", sum(time_stamp) / (len(time_stamp)), iter_idx)
-
-        # print(x)
-
-    # print(obses[0])
-    # print(len(obses))
-
-    # print(envs.get_players())
-    # envs = ParallelVecEnv(envs)
-    # input()
-
-    # print(envs)
-    # print(type(envs.reset()))
 
 
 if __name__ == "__main__":
@@ -173,5 +121,5 @@ if __name__ == "__main__":
     # p.nice(10)
     # input()
     torch.manual_seed(0)
-    play("singleBattle-v0")
+    play("singleBattle-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
 
