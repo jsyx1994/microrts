@@ -94,16 +94,21 @@ class ActorCritic(nn.Module):
             # nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
         )
 
-        self.self_attn = nn.Sequential(
-            Pic2Vector(),
-            nn.TransformerEncoderLayer(d_model=16, nhead=4, dim_feedforward=64, dropout=0, activation="relu"),
-        )
+        # self.self_attn = nn.Sequential(
+        #     Pic2Vector(),
+        #     # nn.TransformerEncoderLayer(d_model=16, nhead=4, dim_feedforward=64, dropout=0, activation="relu"),
+        # )
+        self.self_attn = nn.MultiheadAttention(embed_dim=16,num_heads=8)
+
+
+
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
         self.shared_linear = nn.Sequential(
             Flatten(),
-            init_(nn.Linear(16 * (map_height-2) * (map_width-2), 64)), nn.ReLU(),
+            init_(nn.Linear(16 * (map_height-2) * (map_width-2), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
+            init_(nn.Linear(128, 64)), nn.ReLU(),
             init_(nn.Linear(64, 64)), nn.ReLU(),
             init_(nn.Linear(64, 64)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
@@ -202,7 +207,8 @@ class ActorCritic(nn.Module):
         x = self.shared_conv(spatial_feature)
         # print(x.shape)
         # input()
-        x = self.self_attn(x)
+        x = Pic2Vector()(x)
+        x, _ = self.self_attn(x,x,x)
         x = self.shared_linear(x)
         # x = self.layer_norm(x)
 

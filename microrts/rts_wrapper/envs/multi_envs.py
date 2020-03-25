@@ -33,8 +33,6 @@ def make_vec_envs(env_id, num_processes, context, model):
     nagents = 2 if config.self_play else 1
 
     agents = [[Agent(model) for _ in range(nagents)] for _ in range(num_processes)]
-    # for i in range(num_processes):
-    #     for j in range(nagents):
 
 
     envs = ParallelVecEnv(envs, context=context)
