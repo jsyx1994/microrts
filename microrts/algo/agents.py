@@ -34,10 +34,10 @@ class Agent:
     def __init__(self, model, memory_size=10000, random_rollout_steps=128):
         self.units_on_working = {}
         self._hidden_states = {} # id -> hidden_states
-        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=48)
+        # self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=48)
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
-        self._memory = ReplayBuffer(memory_size)
+        # self._memory = ReplayBuffer(memory_size)
 
         # self.last = []
 
@@ -45,7 +45,7 @@ class Agent:
         self.units_on_working.clear()
         self.steps = 0
         self._hidden_states.clear()
-        self._frame_buffer.refresh()
+        # self._frame_buffer.refresh()
 
     
     def get_memory(self):
@@ -128,7 +128,7 @@ class Agent:
                     # print("yes")
                     # input()
                     key_to_del.append(_id)
-                    print(done, reward)
+                    # print(done, reward)
                     # input()
                     callback({
                         "obs_t":self.units_on_working[_id][0],

@@ -49,12 +49,12 @@ class A2C:
                 # input()
 
                 entropy = - (probs * torch.log(probs)).sum(dim=1)
-                print(m.entropy().shape, rewards.shape)
+                # print(m.entropy().shape, rewards.shape)
                 # print(entropy, m.entropy())
                 # rewards = rewards - m.entropy().unsqueeze(1)
-                print(rewards.shape)
+                # print(rewards.shape)
                 # input()
-                print(value)
+                # print(value)
                 value_next = nn.critic_forward(next_states).detach()
 
                 targets = (rewards + self.gamma  * value_next * done_masks)
