@@ -46,14 +46,13 @@ def play(env_id, nn_path=None):
     else:
         nn = load_model(nn_path, map_size)
     
-    
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    nn.share_memory()
+    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
     # device = "cpu"
     print(device)
     # input()
-    # nn.share_memory()
     nn.to(device)
-    num_process = 4
+    num_process = 8
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
     import time
     frames = 0
@@ -64,7 +63,8 @@ def play(env_id, nn_path=None):
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
-    # print(agents)
+    # print(id(agents[0][1].brain), id(agents[4][0].brain))
+    # input()
     # input()
     while 1:
         time_stamp  = []
@@ -85,7 +85,7 @@ def play(env_id, nn_path=None):
                     # print(i, j)
                 action_i.append(action)
                 if (epi_idx + 1) % 100 == 0:
-                    torch.save(nn.state_dict(), os.path.join(settings.models_dir, 'rl_' + str(int(epi_idx)) + ".pth"))
+                    torch.save(nn.state_dict(), os.path.join(settings.models_dir, 'rl_fg' + str(int(epi_idx)) + ".pth"))
             actions_n.append(action_i)
            
         
@@ -121,5 +121,5 @@ if __name__ == "__main__":
     # p.nice(10)
     # input()
     torch.manual_seed(0)
-    play("singleBattle-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
+    play("fullgame-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
 

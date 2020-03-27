@@ -186,7 +186,7 @@ environments = [
                     width=6,
                     self_play=True,
                     # period=20,
-                    max_cycles=1000,
+                    max_cycles=2000,
                     max_episodes=1000000000,
                 ),
 
