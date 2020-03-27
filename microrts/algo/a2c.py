@@ -51,16 +51,6 @@ class A2C:
                 # m = torch.distributions.Categorical(probs=probs)
 
                 entropy = - (probs * torch.log(probs)).sum(dim=1)
-<<<<<<< HEAD
-                print(value)
-=======
-                # print(m.entropy().shape, rewards.shape)
-                # print(entropy, m.entropy())
-                # rewards = rewards - m.entropy().unsqueeze(1)
-                # print(rewards.shape)
-                # input()
-                # print(value)
->>>>>>> 55244b859623e40f1a96f6bc220b09b0d475a6f8
                 value_next = nn.critic_forward(next_states).detach()
                 # probs_next, _ = nn.actor_forward(actor_type=key,spatial_feature=states,unit_feature=units)
                 # m = torch.distributions.Categorical(probs=probs_next)
