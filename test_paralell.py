@@ -60,7 +60,7 @@ def play(env_id, nn_path=None):
     st = time.time()
     obses_n = envs.reset()
     update_steps = 16
-    algo = A2C(nn, 1e-4,entropy_coef=0.04, weight_decay=1e-5, log_interval=1)
+    algo = A2C(nn, 1e-4,entropy_coef=0.01, weight_decay=1e-5, log_interval=1)
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0

@@ -105,7 +105,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--env-id",
-        default="singleBattle-v0"
+        default="attackHome-v0"
     )
     parser.add_argument(
         '--model-path', help='path of the model to be loaded',
