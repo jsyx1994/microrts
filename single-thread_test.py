@@ -80,32 +80,20 @@ def play(env_id, nn_path=None):
     # print(agents[1][0].brain is agents[4][0].brain)
     # print(len(agents))
     # input()
-    update_steps = 20
-    algo = A2C(nn, 4e-5, weight_decay=1e-7)
+    update_steps = 16
+    algo = A2C(nn, 1e-4, value_loss_coef=0.5, weight_decay=3e-6)
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
 
     while 1:
         time_stamp  = []
-
-        # if obses[0].done:
-        #     # print(111111111111111111111111111111111111111)
-        #     # input()
-        #     epi_idx += 1
-        #     time_stamp.append(obses[0].info["time_stamp"])
-        #     # obses = env.reset()
-        #     print(time_stamp)
-        #     # input()
-        #     agents.forget()
-        
-
-        
         if obses[0].done:
             action = []
             epi_idx += 1
-
             time_stamp.append(obses[0].info["time_stamp"])
+            agents.sum_up(callback=memo_inserter, obses=obses[0], accelerator=device, mode="train")
+            algo.update(memory, iter_idx, callback=logger, device=device)
             agents.forget()
         else:
             action = agents.think(callback=memo_inserter, obses=obses[0], accelerator=device, mode="train")
@@ -120,10 +108,10 @@ def play(env_id, nn_path=None):
         frames += 1
         
         # print(time.time() - st)
-        if frames % update_steps == 0:
-            # print(memory.__len__())
-            algo.update(memory, iter_idx, callback=logger, device=device)
-            iter_idx += 1
+        # if frames % update_steps == 0:
+        #     # print(memory.__len__())
+        #     algo.update(memory, iter_idx, callback=logger, device=device)
+        #     iter_idx += 1
         
         # if memory.__len__() >= update_steps * num_process:
         #     algo.update(memory, iter_idx, callback=logger, device=device)
@@ -142,8 +130,10 @@ def play(env_id, nn_path=None):
 
         # if obses[0].done:
         #     print(111111111111111111111111111111111111111)
-        #     input()
+        #     # input()
         #     time_stamp.append(obses[0].info["time_stamp"])
+            # agents.sum_up(callback=memo_inserter, obses=obses[0], accelerator=device, mode="train")
+        #     algo.update(memory, iter_idx, callback=logger, device=device)
         #     agents.forget()
 
 

@@ -4,7 +4,11 @@ import torch.optim as optim
 from .replay_buffer import ReplayBuffer
 import copy
 
-
+def soft_update(target, source, tau):
+    for target_param, param in zip(target.parameters(), source.parameters()):
+        target_param.data.copy_(
+            target_param.data * (1.0 - tau) + param.data * tau
+        )
 
 class A2C:
     def __init__(self,
@@ -63,10 +67,10 @@ class A2C:
                 # m = torch.distributions.Categorical(probs=probs_next)
 
                 # rewards = rewards + m.entropy().unsqueeze(0)
-                # print(rewards.std())
+                print(value)
                 # rewards = (rewards - rewards.mean()) / (rewards.std()+self.eps) 
                 pi_sa = probs.gather(1, actions)
-                targets = (rewards - 0.00 * torch.log(pi_sa + self.eps).detach() + self.gamma  * value_next * done_masks)
+                targets = torch.tanh(rewards)  - 0 * torch.tanh(torch.log(pi_sa + self.eps).detach()) + self.gamma  * value_next * done_masks
 
                 advantages = targets - value
                 # print(m.entropy())
@@ -76,7 +80,7 @@ class A2C:
                 value_loss = value_criteria(value, targets)
 
 
-                all_loss = policy_loss + value_loss * self.value_loss_coef  + self.entropy_coef * entropy_loss
+                all_loss = policy_loss + value_loss * self.value_loss_coef # + self.entropy_coef * entropy_loss
                 
                 total_loss += all_loss
                 total_rewards += rewards.mean()
@@ -101,8 +105,9 @@ class A2C:
             if callback:
                 callback(iter_idx, results)
         
-        if iter_idx % 1000 == 0:
-            self.target_net = copy.deepcopy(self.actor_critic)
-                
+        # if iter_idx % 10 == 0:
+        #     self.target_net = copy.deepcopy(self.actor_critic)
+        #     # self.target_net.parameters = 0.001 * self.actor_critic.parameters + 0.999 * self.target_net.parameters
+        soft_update(self.target_net, self.actor_critic, tau=.001)           
         rollouts.refresh()
 

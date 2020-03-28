@@ -47,7 +47,7 @@ def _subproc_worker(pipe, parent_pipe, env_fn_wrapper):
     shared memory.
     """
 
-    env = env_fn_wrapper.x()
+    env = env_fn_wrapper()
     # print(env)
     # sleep(5)
     # env = env_fn_wrapper()
@@ -111,19 +111,20 @@ class ParallelVecEnv(VecEnv):
         
         self.parent_pipes = []
         self.procs = []
-        with clear_mpi_env_vars():
-            for i, env_fn in enumerate(env_fns):
-                wrapped_fn = CloudpickleWrapper(env_fn)
-                parent_pipe, child_pipe = ctx.Pipe()
-                # proc = ctx.Process(target=_subproc_worker,
-                #             args=(child_pipe, parent_pipe, wrapped_fn, obs_buf, self.obs_shapes, self.obs_dtypes, self.obs_keys))
-                proc = ctx.Process(target=_subproc_worker,
-                            args=(child_pipe, parent_pipe, wrapped_fn))
-                proc.daemon = True
-                self.procs.append(proc)
-                self.parent_pipes.append(parent_pipe)
-                proc.start()
-                child_pipe.close()
+        for i, env_fn in enumerate(env_fns):
+            # wrapped_fn = CloudpickleWrapper(env_fn)
+            wrapped_fn = env_fn
+
+            parent_pipe, child_pipe = ctx.Pipe()
+            # proc = ctx.Process(target=_subproc_worker,
+            #             args=(child_pipe, parent_pipe, wrapped_fn, obs_buf, self.obs_shapes, self.obs_dtypes, self.obs_keys))
+            proc = ctx.Process(target=_subproc_worker,
+                        args=(child_pipe, parent_pipe, wrapped_fn))
+            # proc.daemon = True
+            self.procs.append(proc)
+            self.parent_pipes.append(parent_pipe)
+            proc.start()
+            child_pipe.close()
         self.waiting_step = False
         self.viewer = None
         super(ParallelVecEnv, self).__init__(len(env_fns))

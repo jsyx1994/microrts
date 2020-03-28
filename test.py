@@ -56,8 +56,12 @@ def self_play(args):
     algo = A2C(nn,lr=args.lr, weight_decay=3e-6, entropy_coef=args.entropy, value_loss_coef=args.value_loss_coef, log_interval=5, gamma=args.gamma)
     # update_step = 64 #+ agents[0].random_rollout_steps
     # step = 0
+    bg_state = None
     for epi_idx in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset
+        print(bg_state == obses_t[0])
+        bg_state = obses_t[0]
+        input()
         # print("reseted")
         start_time = time.time()
         players_G0 = [0, 0]

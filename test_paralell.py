@@ -11,6 +11,7 @@ from microrts.algo.a2c import A2C
 from microrts.rts_wrapper.envs.datatypes import Config
 import microrts.settings as settings 
 import os
+import argparse
 
 def get_config(env_id) -> Config :
         from microrts.rts_wrapper import environments
@@ -36,6 +37,7 @@ def play(env_id, nn_path=None):
     start_from_scratch = nn_path is None
 
     config = get_config(env_id)
+    # config.render=1
     map_size = config.height, config.width
     max_episodes = config.max_episodes
 
@@ -52,14 +54,17 @@ def play(env_id, nn_path=None):
     print(device)
     # input()
     nn.to(device)
-    num_process = 2
+    num_process = 8
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
     import time
     frames = 0
     st = time.time()
     obses_n = envs.reset()
+    # bg_state = obses_n[0][0]
+    # print(len(obses_n[0]))
+    # input()
     update_steps = 16
-    algo = A2C(nn, 4e-4,entropy_coef=0.01, weight_decay=1e-5, log_interval=1)
+    algo = A2C(nn,1e-4,entropy_coef=0.02,value_loss_coef=.5, weight_decay=3e-6, log_interval=1)
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
@@ -74,35 +79,53 @@ def play(env_id, nn_path=None):
             for j in range(len(obses_n[i])):
                 # if obses_n[i][j].reward > 0:
                 #     print(obses_n[i][j].reward)
+                # print(obses_n[i][0].done == obses_n[i][1].done)
+                # input()
                 if not obses_n[i][j].done:
                     action = agents[i][j].think(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                    # print(action)
+                    # input()
+                    if len(memory) % (update_steps * num_process) == 0:
+                        # print(memory.__len__())
+                        algo.update(memory, iter_idx, callback=logger, device=device)
+                        iter_idx += 1
                 else:
                     action = [] # reset
                     epi_idx += .5
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
                     agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                    # algo.update(memory, iter_idx, callback=logger, device=device)
+                    # iter_idx += 1
                     agents[i][j].forget()
                     # print(i, j)
                 action_i.append(action)
                 if (epi_idx + 1) % 100 == 0:
                     torch.save(nn.state_dict(), os.path.join(settings.models_dir, 'rl_fg' + str(int(epi_idx)) + ".pth"))
             actions_n.append(action_i)
+    
            
-        
+        # if obses_n[0][0].done:
+        #     print(2)
+        #     print(actions_n)
+        #     print(obses_n[0][0].info["time_stamp"])
+        #     input()
         if time_stamp:
             # print("logged", iter_idx)
             writer.add_scalar("TimeStamp", sum(time_stamp) / (len(time_stamp)), epi_idx)
-        
+       
+        # if obses_n[0][0].done:
+        #     obses_n = envs.step(actions_n)
+        #     print(obses_n[0][0].observation == bg_state.observation)
+        #     input()
+        # else:
         obses_n = envs.step(actions_n)
+        
+
         # print(time.time() - _st)
 
         frames += 1
         
         # print(time.time() - st)
-        if len(memory) % (update_steps * num_process) == 0:
-            # print(memory.__len__())
-            algo.update(memory, iter_idx, callback=logger, device=device)
-            iter_idx += 1
         
         # if memory.__len__() >= update_steps * num_process:
         #     algo.update(memory, iter_idx, callback=logger, device=device)
@@ -116,10 +139,62 @@ def play(env_id, nn_path=None):
 
 
 if __name__ == "__main__":
-    # p = psutil.Process(os.getpid())
-    # # print(p.nice())
-    # p.nice(10)
-    # input()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--env-id",
+        default="attackHome-v0"
+    )
+    parser.add_argument(
+        '--model-path', help='path of the model to be loaded',
+        default=None
+    )
+    parser.add_argument(
+        '--episodes',
+        # default=10e6,
+        type=int,
+        default=10e4,
+    )
+    parser.add_argument(
+        '--recurrent',
+        action="store_true",
+        # type=bool,
+        default=False,
+    )
+    parser.add_argument(
+        '-lr',
+        type=float,
+        default=1e-4,
+    )
+    parser.add_argument(
+        '--entropy',
+        type=float,
+        default=0.01,
+    )
+    parser.add_argument(
+        '--value_loss_coef',
+        type=float,
+        default=0.5
+    )
+    parser.add_argument(
+        '--gamma',
+        type=float,
+        default=0.99
+    )
+    parser.add_argument(
+        '--render',
+        type=int,
+        default=1
+    )
+    parser.add_argument(
+        '--opponent',
+        default="socketAI"
+    )
+    parser.add_argument(
+        "--saving-prefix",
+        default='rl',
+    )
+    args = parser.parse_args()
+    print(args)
     torch.manual_seed(0)
-    play("singleBattle-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
+    play("attackHome-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
 

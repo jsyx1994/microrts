@@ -182,7 +182,7 @@ class ActorCritic(nn.Module):
             init_(nn.Linear(16 * (map_height) * (map_width), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             init_(nn.Linear(128, 64)), nn.ReLU(),
-            init_(nn.Linear(64, 64)), nn.ReLU(),
+            # init_(nn.Linear(64, 64)), nn.ReLU(),
             # init_(nn.Linear(64, 64)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
