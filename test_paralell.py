@@ -46,20 +46,20 @@ def play(env_id, nn_path=None):
     else:
         nn = load_model(nn_path, map_size)
     
-    nn.share_memory()
+    # nn.share_memory()
     device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
     # device = "cpu"
     print(device)
     # input()
     nn.to(device)
-    num_process = 8
+    num_process = 2
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
     import time
     frames = 0
     st = time.time()
     obses_n = envs.reset()
     update_steps = 16
-    algo = A2C(nn, 1e-4,entropy_coef=0.01, weight_decay=1e-5, log_interval=1)
+    algo = A2C(nn, 4e-4,entropy_coef=0.01, weight_decay=1e-5, log_interval=1)
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
@@ -121,5 +121,5 @@ if __name__ == "__main__":
     # p.nice(10)
     # input()
     torch.manual_seed(0)
-    play("fullgame-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
+    play("singleBattle-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
 

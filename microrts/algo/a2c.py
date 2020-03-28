@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from .replay_buffer import ReplayBuffer
+import copy
 
 
 
@@ -17,6 +18,8 @@ class A2C:
         value_loss_coef=1
         ):
         self.actor_critic = ac_model
+        self.target_net = copy.deepcopy(ac_model)
+
         # self.optimizer = optim.RMSprop(ac_model.parameters(), lr, weight_decay=weight_decay)
         self.optimizer = optim.Adam(ac_model.parameters(), lr, weight_decay=weight_decay)
 
@@ -31,7 +34,7 @@ class A2C:
         if rollouts.__len__() <= 0:
             return 
         sps_dict = rollouts.sample(batch_size='all')
-        nn = self.actor_critic
+        # nn = self.actor_critic
         optimizer = self.optimizer
         value_criteria= torch.nn.MSELoss()
 
@@ -39,31 +42,37 @@ class A2C:
         total_rewards = 0
 
         for key in sps_dict:
-            if key not in nn.activated_agents:
+            if key not in self.actor_critic.activated_agents:
                 continue
 
             if sps_dict[key]:
                 states, units, actions, next_states, rewards, hxses, done_masks = sps_dict[key].to(device)
                 if self.actor_critic.recurrent:
-                    value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
+                    value = self.target_net.critic_forward(states)
+                    probs, _ = self.actor_critic.actor_forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
+                    # value, probs, _ = self.actor_critic.forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
                 else:
-                    value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
+                    value = self.target_net.critic_forward(states)
+                    probs, _ = self.actor_critic.actor_forward(actor_type=key,spatial_feature=states,unit_feature=units)
+                    # value, probs, _ = self.actor_critic.forward(actor_type=key,spatial_feature=states,unit_feature=units)
                 # m = torch.distributions.Categorical(probs=probs)
 
                 entropy = - (probs * torch.log(probs)).sum(dim=1)
-                value_next = nn.critic_forward(next_states).detach()
+                value_next = self.actor_critic.critic_forward(next_states).detach()
                 # probs_next, _ = nn.actor_forward(actor_type=key,spatial_feature=states,unit_feature=units)
                 # m = torch.distributions.Categorical(probs=probs_next)
 
                 # rewards = rewards + m.entropy().unsqueeze(0)
+                # print(rewards.std())
+                # rewards = (rewards - rewards.mean()) / (rewards.std()+self.eps) 
                 pi_sa = probs.gather(1, actions)
-                targets = (rewards - 0.01 * torch.log(pi_sa) + self.gamma  * value_next * done_masks)
+                targets = (rewards - 0.00 * torch.log(pi_sa + self.eps).detach() + self.gamma  * value_next * done_masks)
 
-                advantages = targets - value.detach()
+                advantages = targets - value
                 # print(m.entropy())
                 # input()
                 entropy_loss = -entropy.mean()
-                policy_loss = -(torch.log(pi_sa + self.eps) * advantages).mean()
+                policy_loss = -(torch.log(pi_sa + self.eps) * advantages.detach()).mean()
                 value_loss = value_criteria(value, targets)
 
 
@@ -91,6 +100,9 @@ class A2C:
         if iter_idx % self.log_interval == 0:
             if callback:
                 callback(iter_idx, results)
+        
+        if iter_idx % 1000 == 0:
+            self.target_net = copy.deepcopy(self.actor_critic)
                 
         rollouts.refresh()
 

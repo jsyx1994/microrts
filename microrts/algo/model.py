@@ -158,9 +158,9 @@ class ActorCritic(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=2)), nn.ReLU(),
-            # init_(nn.Conv2d(64, 32, 1)), nn.ReLU(),
-            init_(nn.Conv2d(32, 16, 2)), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)), nn.ReLU(),
+            init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
             # nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
@@ -179,11 +179,11 @@ class ActorCritic(nn.Module):
                                constant_(x, 0))
         self.shared_linear = nn.Sequential(
             Flatten(),
-            init_(nn.Linear(16 * (map_height-2) * (map_width-2), 128)), nn.ReLU(),
+            init_(nn.Linear(16 * (map_height) * (map_width), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             init_(nn.Linear(128, 64)), nn.ReLU(),
             init_(nn.Linear(64, 64)), nn.ReLU(),
-            init_(nn.Linear(64, 64)), nn.ReLU(),
+            # init_(nn.Linear(64, 64)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
         )
@@ -193,7 +193,7 @@ class ActorCritic(nn.Module):
             init_(nn.Linear(self.shared_out_size, 64)), nn.ReLU(),
             init_(nn.Linear(64, 64)), nn.ReLU(),
             init_(nn.Linear(64, 64)), nn.ReLU(),
-            init_(nn.Linear(64, 64)), nn.ReLU(),
+            # init_(nn.Linear(64, 64)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
@@ -219,12 +219,12 @@ class ActorCritic(nn.Module):
                     nn.init.constant_(param, 0)
                 elif 'weight' in name:
                     nn.init.orthogonal_(param)
-        self.layer_norm = nn.LayerNorm(normalized_shape=(128),elementwise_affine=False)
+        # self.layer_norm = nn.LayerNorm(normalized_shape=(128),elementwise_affine=False)
 
         self.actor_out = nn.ModuleDict({
             UNIT_TYPE_NAME_WORKER: nn.Sequential(
-                init_(nn.Linear(64, 64)), nn.ReLU(),
-                init_(nn.Linear(64, 64)), nn.ReLU(),
+                # init_(nn.Linear(64, 64)), nn.ReLU(),
+                # init_(nn.Linear(64, 64)), nn.ReLU(),
 
                 init_(nn.Linear(64, WorkerAction.__members__.items().__len__())),
                 nn.Softmax(dim=1)
@@ -235,8 +235,8 @@ class ActorCritic(nn.Module):
                 # nn.Linear(64, 64), nn.ReLU(),
                 # nn.Linear(64, 64), nn.ReLU(),
                 # nn.Linear(64, 32), nn.ReLU(),
-                init_(nn.Linear(64, 64)), nn.ReLU(),
-                init_(nn.Linear(64, 64)), nn.ReLU(),
+                # init_(nn.Linear(64, 64)), nn.ReLU(),
+                # init_(nn.Linear(64, 64)), nn.ReLU(),
 
                 init_(nn.Linear(64, BaseAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
@@ -255,15 +255,15 @@ class ActorCritic(nn.Module):
             ),
             UNIT_TYPE_NAME_BARRACKS: nn.Sequential(
                 # init_(nn.Linear(128, 128)), nn.ReLU(),
-                init_(nn.Linear(64, 64)), nn.ReLU(),
+                # init_(nn.Linear(64, 64)), nn.ReLU(),
                 init_(nn.Linear(64, BarracksAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_HEAVY: nn.Sequential(
                 # nn.Linear(256, 128), nn.ReLU(),
                 # nn.Linear(128, 64), nn.ReLU(),
-                init_(nn.Linear(64, 64)), nn.ReLU(),
-                init_(nn.Linear(64, 64)), nn.ReLU(),
+                # init_(nn.Linear(64, 64)), nn.ReLU(),
+                # init_(nn.Linear(64, 64)), nn.ReLU(),
                 # nn.Linear(64, 64), nn.ReLU(),
                 # nn.Linear(64, 32), nn.ReLU(),
                 init_(nn.Linear(64, HeavyAction.__members__.items().__len__())),
@@ -280,10 +280,8 @@ class ActorCritic(nn.Module):
         x = self.shared_conv(spatial_feature)
         # print(x.shape)
         # input()
-        x = Pic2Vector()(x)
-        # print(x.size())
-        # input()
-        x, _ = self.self_attn(x,x,x)
+        # x = Pic2Vector()(x)
+        # x, _ = self.self_attn(x,x,x)
         x = self.shared_linear(x)
         # x = self.layer_norm(x)
 
