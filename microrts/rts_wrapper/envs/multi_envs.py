@@ -30,7 +30,7 @@ def make_vec_envs(env_id, num_processes, context, model):
     
     # input()
     config = get_config(env_id)
-    nagents = 2 if config.self_play else 1
+    nagents = 2 if (config.ai1_type == "socketAI" and config.ai2_type == "socketAI") else 1
 
     agents = [[Agent(model) for _ in range(nagents)] for _ in range(num_processes)]
 
