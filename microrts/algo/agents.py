@@ -51,10 +51,10 @@ class Agent:
     def get_memory(self):
         return self._memory
     
-    def sum_up(self, callback=None, **kwargs):
-        self.think(callback, **kwargs)
+    def sum_up(self,sp_ac=None, callback=None, **kwargs):
+        self.think(sp_ac,callback, **kwargs)
 
-    def think(self, callback=None,way="stochastic",**kwargs):
+    def think(self,sp_ac=None, callback=None,way="stochastic",**kwargs):
         """figure out the action according to helper function and obs, store env related action to itself and \
             nn related result to Replay Buffer. More
         Arguments:
@@ -86,7 +86,7 @@ class Agent:
         
         del kwargs
 
-
+        sp_ac = sp_ac if sp_ac else self.brain
         # self._frame_buffer.push(obs)
 
         # obs = self._frame_buffer.fetch()
@@ -99,7 +99,7 @@ class Agent:
         # self.steps += 1
         samples, hxses = sampler(
                 info=info,
-                model=self.brain,
+                model=sp_ac,
                 state=obs,
                 device=device,
                 mode=way,

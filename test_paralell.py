@@ -7,7 +7,7 @@ from torch.utils.tensorboard import SummaryWriter
 from microrts.algo.replay_buffer import ReplayBuffer
 
 from microrts.rts_wrapper.envs.utils import action_sampler_v2, network_simulator
-from microrts.algo.a2c import A2C
+from microrts.algo.ppo import PPO
 from microrts.rts_wrapper.envs.datatypes import Config
 import microrts.settings as settings 
 import os
@@ -54,7 +54,7 @@ def play(env_id, nn_path=None):
     print(device)
     # input()
     nn.to(device)
-    num_process = 8
+    num_process = 4
     envs, agents = make_vec_envs(env_id, num_process, "fork", nn)
     import time
     frames = 0
@@ -64,14 +64,16 @@ def play(env_id, nn_path=None):
     # print(len(obses_n[0]))
     # input()
     update_steps = 16
-    algo = A2C(nn,1e-4,entropy_coef=0.02,value_loss_coef=.5, weight_decay=3e-6, log_interval=1)
+    ppo = PPO(nn,3e-4,entropy_coef=0.04,value_loss_coef=.5, weight_decay=3e-6, log_interval=1)
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
     # print(id(agents[0][1].brain), id(agents[4][0].brain))
     # input()
     # input()
+    T = 0
     while 1:
+        T += 1
         time_stamp  = []
         actions_n = []
         for i in range(num_process):
@@ -82,18 +84,19 @@ def play(env_id, nn_path=None):
                 # print(obses_n[i][0].done == obses_n[i][1].done)
                 # input()
                 if not obses_n[i][j].done:
-                    action = agents[i][j].think(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                    action = agents[i][j].think(sp_ac=ppo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     # print(action)
                     # input()
-                    if len(memory) % (update_steps * num_process) == 0:
+                    # if len(memory) % (update_steps * num_process) == 0:
+                    if T % (update_steps * num_process) == 0:
                         # print(memory.__len__())
-                        algo.update(memory, iter_idx, callback=logger, device=device)
+                        ppo.update(memory, iter_idx, callback=logger, device=device)
                         iter_idx += 1
                 else:
                     action = [] # reset
                     epi_idx += .5
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
-                    agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                    agents[i][j].sum_up(sp_ac=ppo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     # algo.update(memory, iter_idx, callback=logger, device=device)
                     # iter_idx += 1
                     agents[i][j].forget()
@@ -196,5 +199,5 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(args)
     torch.manual_seed(0)
-    play("attackHome-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
+    play("doubleBattle-v0") #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
 

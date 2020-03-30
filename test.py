@@ -53,27 +53,27 @@ def self_play(args):
     
 
     agents = [Agent(model=nn) for _ in range(env.players_num)]
-    algo = A2C(nn,lr=args.lr, weight_decay=3e-6, entropy_coef=args.entropy, value_loss_coef=args.value_loss_coef, log_interval=5, gamma=args.gamma)
+    algo = A2C(nn,lr=args.lr, weight_decay=1e-7, entropy_coef=args.entropy, value_loss_coef=args.value_loss_coef, log_interval=5, gamma=args.gamma)
     # update_step = 64 #+ agents[0].random_rollout_steps
     # step = 0
-    bg_state = None
+    # bg_state = None
     for epi_idx in range(env.max_episodes):
         obses_t = env.reset()  # p1 and p2 reset
-        print(bg_state == obses_t[0])
-        bg_state = obses_t[0]
-        input()
+        # print(bg_state == obses_t[0])
+        # bg_state = obses_t[0]
+        # input()
         # print("reseted")
         start_time = time.time()
         players_G0 = [0, 0]
         while not obses_t[0].done:
             actions = []
             for i in range(len(players)):
-                action = agents[i].think(callback=memo_inserter,way="stochastic", obses=obses_t[i], accelerator=device, mode="train")
+                action = agents[i].think(sp_ac=algo.target_net,callback=memo_inserter,way="stochastic", obses=obses_t[i], accelerator=device, mode="train")
                 actions.append(action)
             obses_tp1 = env.step(actions)
             if obses_tp1[0].done:
                 for agent in agents:
-                    agent.sum_up(callback=memo_inserter,way="stochastic", obses=obses_tp1[i], accelerator=device, mode="train")
+                    agent.sum_up(sp_ac=algo.target_net,callback=memo_inserter,way="stochastic", obses=obses_tp1[i], accelerator=device, mode="train")
                     agent.forget()
             # if len(memory) >= update_step:
             # # if step >= 5:

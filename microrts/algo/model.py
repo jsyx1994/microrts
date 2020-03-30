@@ -143,7 +143,7 @@ class ActorCritic(nn.Module):
         
         self.recurrent = recurrent
         map_height, map_width = map_size
-        self.shared_out_size = 64
+        self.shared_out_size = 128
 
 
         self.activated_agents = [
@@ -181,8 +181,8 @@ class ActorCritic(nn.Module):
             Flatten(),
             init_(nn.Linear(16 * (map_height) * (map_width), 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
-            init_(nn.Linear(128, 64)), nn.ReLU(),
-            # init_(nn.Linear(64, 64)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(64, 64)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
@@ -190,26 +190,26 @@ class ActorCritic(nn.Module):
 
 
         self.critic_mlps = nn.Sequential(
-            init_(nn.Linear(self.shared_out_size, 64)), nn.ReLU(),
-            init_(nn.Linear(64, 64)), nn.ReLU(),
-            init_(nn.Linear(64, 64)), nn.ReLU(),
+            init_(nn.Linear(self.shared_out_size, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(64, 64)), nn.ReLU(),
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
 
         )
-        self.critic_out = init_(nn.Linear(64, 1))
+        self.critic_out = init_(nn.Linear(128, 1))
 
         #-------------------------------------------#
 
 
         self.actor_mlps = nn.Sequential(
-            init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 64)), nn.ReLU(),
-            init_(nn.Linear(64, 64)), nn.ReLU(),
-            init_(nn.Linear(64, 64)), nn.ReLU(),
-            # init_(nn.Linear(128, 128)), nn.ReLU(),
-            # init_(nn.Linear(128, 128)), nn.ReLU(),
+            init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, 128)), nn.ReLU(),
+            # init_(nn.Linear(64, 64)), nn.ReLU(),
+            # init_(nn.Linear(64, 64)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
+            init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
         )
         if recurrent:
@@ -226,7 +226,7 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
 
-                init_(nn.Linear(64, WorkerAction.__members__.items().__len__())),
+                init_(nn.Linear(128, WorkerAction.__members__.items().__len__())),
                 nn.Softmax(dim=1)
             ),
             UNIT_TYPE_NAME_BASE: nn.Sequential(
@@ -247,10 +247,10 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(128, 128)), nn.ReLU(),
-                init_(nn.Linear(64, 64)), nn.ReLU(),
-                init_(nn.Linear(64, 64)), nn.ReLU(),
+                init_(nn.Linear(128, 128)), nn.ReLU(),
+                init_(nn.Linear(128, 128)), nn.ReLU(),
 
-                init_(nn.Linear(64, LightAction.__members__.items().__len__())),
+                init_(nn.Linear(128, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_BARRACKS: nn.Sequential(
