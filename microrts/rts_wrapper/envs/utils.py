@@ -235,7 +235,7 @@ def signal_wrapper(raw):
     # gs_wrapper = GsWrapper(**json.loads(raw.split('\n')[1]))
     # print(raw)
     # input()
-    observation = state_encoder_v2(gs_wrapper.gs, curr_player)
+    observation = state_encoder_v4(gs_wrapper.gs, curr_player)
     reward = gs_wrapper.reward
     done = gs_wrapper.done
     # self.game_time = gs_wrapper.gs.time
@@ -747,34 +747,47 @@ def state_encoder_v4(gs:GameState, player):
         else:
             cannot_walk.append(1)
             can_walk.append(0)
-    channel_whether_walkable = np.array([cannot_walk, can_walk]).reshape((2, h, w))
 
-    # channel_terrain = np.array([int(x) for x in pgs.terrain]).reshape((1, h, w))
-
-    # resource number in the box (Discretized)
+    channel_whether_walkable = np.array([cannot_walk, cannot_walk]).reshape((2, h, w))
     channel_resource_size = np.zeros((8, h, w))
+    
+    # whether is a resource
+    channel_whether_resource = np.zeros((2, h, w))
 
-    # which type of units? the last bit indicates empty
-    channel_units_type    = np.zeros((len(UNIT_COLLECTION), h, w))
+    # whether my or opp's Base
+    channel_my_base = np.zeros((2, h, w))
+    channel_opp_base = np.zeros((2, h, w))
 
-    # whether my units occupy the box? not occupied, occupied
-    channel_whether_mine = np.zeros((2, h, w))
-    channel_whether_mine[0,:,:] = 1 # default: not
 
-    # Who am I?
-    channel_player = np.zeros((2, h, w))
-    channel_player[current_player,:,:] = 1
+    # whether my or opp's Barracks
+    channel_my_barracks = np.zeros((2, h, w))
+    channel_opp_barracks = np.zeros((2, h, w))
 
-    # hp ratio range None, 0%~10%, 10%~20%, 20%~40%, 40%~80%, 80%~100% 
-    channel_hp_ratio = np.zeros((6, h, w))
+    # whether my or opp's Worker
+    channel_my_worker = np.zeros((2, h, w))
+    channel_opp_worker = np.zeros((2, h, w))
+
+    # whether my or opp's Light
+    channel_my_light = np.zeros((2, h, w))
+    channel_opp_light = np.zeros((2, h, w))
+
+    # whether my or opp's Heavy
+    channel_my_heavy = np.zeros((2, h, w))
+    channel_opp_heavy = np.zeros((2, h, w))
+    
+    # whether my or opp's Range
+    channel_my_range = np.zeros((2, h, w))
+    channel_opp_range = np.zeros((2, h, w))
 
     channel_my_resources = np.zeros((8, h, w))
     channel_opp_resources = np.zeros((8, h, w))
     _one_hot_my_resource_pos  = list(resource_encoder(my_resources)).index(1)
     _one_hot_opp_resource_pos = list(resource_encoder(opp_resources)).index(1)
-    # channel_my_resources[_one_hot_my_resource_pos,:,:]  = 1
-    # channel_my_resources[_one_hot_opp_resource_pos,:,:] = 1
+    channel_my_resources[_one_hot_my_resource_pos,:,:]  = 1
+    channel_opp_resources[_one_hot_opp_resource_pos,:,:] = 1
 
+    channel_hp_ratio = np.zeros((6, h, w))
+    channel_action_trend = np.zeros((5 , h, w))
 
     id_location_map = {}
     for unit in units:
@@ -784,46 +797,104 @@ def state_encoder_v4(gs:GameState, player):
         _resource_carried = unit.resources
         _hp = unit.hitpoints
         _id = unit.ID
+        id_location_map[_id] = unit
 
         _one_hot_hp_ratio_pos = hp_ratio_encoder(_hp / UTT_DICT[_type].hp)
         channel_hp_ratio[_one_hot_hp_ratio_pos][_x][_y] = 1
 
         _one_hot_resource_pos = list(resource_encoder(_resource_carried)).index(1)
         channel_resource_size[_one_hot_resource_pos][_x][_y] = 1
+        if _type == UNIT_TYPE_NAME_RESOURCE:
+            channel_whether_resource[1][_x][_y] = 1
+        else:
+            channel_whether_resource[0][_x][_y] = 1
+        
+        if _type == UNIT_TYPE_NAME_BASE:
+            if _owner == current_player:
+                channel_my_base[1][_x][_y] = 1
+                channel_opp_base[0][_x][_y] = 1
+            else:
+                channel_my_base[0][_x][_y] = 1
+                channel_opp_base[1][_x][_y] = 1       
+        elif _type == UNIT_TYPE_NAME_BARRACKS:
+            if _owner == current_player:
+                channel_my_barracks[1][_x][_y] = 1
+                channel_opp_barracks[0][_x][_y] = 1
+            else:
+                channel_my_barracks[0][_x][_y] = 1
+                channel_opp_barracks[1][_x][_y] = 1 
+        elif _type == UNIT_TYPE_NAME_WORKER:
+            if _owner == current_player:
+                channel_my_worker[1][_x][_y] = 1
+                channel_opp_worker[0][_x][_y] = 1
+            else:
+                channel_my_worker[0][_x][_y] = 1
+                channel_opp_worker[1][_x][_y] = 1
+        elif _type == UNIT_TYPE_NAME_LIGHT:
+            if _owner == current_player:
+                channel_my_light[1][_x][_y] = 1
+                channel_opp_light[0][_x][_y] = 1
+            else:
+                channel_my_light[0][_x][_y] = 1
+                channel_opp_light[1][_x][_y] = 1
+        elif _type == UNIT_TYPE_NAME_HEAVY:
+            if _owner == current_player:
+                channel_my_heavy[1][_x][_y] = 1
+                channel_opp_heavy[0][_x][_y] = 1
+            else:
+                channel_my_heavy[0][_x][_y] = 1
+                channel_opp_heavy[1][_x][_y] = 1
+        elif _type == UNIT_TYPE_NAME_RANGED:
+            if _owner == current_player:
+                channel_my_range[1][_x][_y] = 1
+                channel_opp_range[0][_x][_y] = 1
+            else:
+                channel_my_range[0][_x][_y] = 1
+                channel_opp_range[1][_x][_y] = 1
+        
 
-        _one_hot_type_pos = UNIT_COLLECTION.index(_type)
-        channel_units_type[_one_hot_type_pos][_x][_y] = 1
-
-        if _owner == current_player:
-            channel_whether_mine[1][_x][_y] = 1
-            channel_whether_mine[0][_x][_y] = 0 # unselected
-
-        id_location_map[_id] = unit
+    
+    channel_action_trend = np.zeros((5 , h, w))
+    
+    for action in gs.actions:
+        _id = action.ID # the executor id of the action
+        _action = action.action
+        _unit = id_location_map[_id]
+        _x, _y = _unit.x, _unit.y
+        atk_x, atk_y = _action.x, _action.y  # the box location under attack
+        _one_hot_action_trend_pos = game_action_translator(_unit, _action)
+        channel_action_trend[_one_hot_action_trend_pos][_x][_y] = 1
 
     spatial_features = np.vstack(
         (
             channel_whether_walkable, # 2
             channel_resource_size,    # 8
-            channel_hp_ratio,         # 6
-            channel_units_type,       # 7
+            channel_hp_ratio, #6
+            channel_whether_resource, #2
+            channel_action_trend, #5
+            # 23
 
-            channel_whether_mine,     # 2
-            channel_my_resources,     # 8
-            channel_opp_resources,    # 8
-            channel_player,           # 2
-            # 43
+            channel_my_base,
+            channel_my_barracks,
+            channel_my_worker,
+            channel_my_light,
+            channel_my_heavy,
+            channel_my_range,
+            channel_my_resources,
+            # 20
 
-            # channel_under_attack,     # 2
-            # channel_action_type,      # 8
-            # channel_action_para,      # 6
-            # channel_action_produce_type,     # 8
-            # channel_action_completion_ratio, # 6
-            # 30
+            channel_opp_base,
+            channel_opp_barracks,
+            channel_opp_worker,
+            channel_opp_light,
+            channel_opp_heavy,
+            channel_opp_range,
+            channel_opp_resources,
+            # 20
+            # total: 63
                                     
         ),
     )
-    # print(spatial_features.shape)
-    # input()
     return spatial_features
 
 

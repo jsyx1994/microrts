@@ -76,20 +76,21 @@ class PPO:
                 pi_sa = probs.gather(1, actions)
                 pi_sa_old = probs_old.gather(1,actions)
                 log_pi_sa_old = torch.log(pi_sa_old + self.eps).detach()
+                log_pi_sa = torch.log(pi_sa + self.eps).detach()
                 # print(log_pi_sa)
                 # print(rewards)
                 # print(torch.tanh(rewards))
                 # input()
-                targets = rewards  + self.gamma  * value_next * done_masks
+                targets = rewards -  .1 * log_pi_sa + self.gamma  * value_next * done_masks
 
-                advantages = (targets-  0.01 * log_pi_sa_old - value_old).detach()
+                advantages = (targets - value_old).detach()
                 # print(m.entropy())
                 # input()
                 entropy_loss = -entropy.mean()
                 ratio = pi_sa / pi_sa_old
                 clip_ratio = 0.2
                 clip_adv = torch.clamp(ratio, 1-clip_ratio, 1+clip_ratio) * advantages
-                policy_loss = -(torch.min(ratio * advantages, clip_adv)).mean()
+                policy_loss = -(torch.min(ratio * advantages, clip_adv)).mean() # + 0.04 * entropy_loss
                 # policy_loss = -(torch.log(pi_sa + self.eps) * advantages.detach()).mean()
                 # policy_loss = (-pi_sa/ pi_sa_old * advantages).mean()
 
@@ -112,7 +113,7 @@ class PPO:
         results = {
             # "p_loss": policy_loss.mean(),
             # "v_loss": value_loss.mean(),
-            "rewards": total_rewards.mean(),
+            # "rewards": total_rewards.mean(),
             # "entropy_loss": entropy_loss,
             "all_losses":all_loss,
         }

@@ -8,6 +8,7 @@ from microrts.algo.replay_buffer import ReplayBuffer
 
 from microrts.rts_wrapper.envs.utils import action_sampler_v2, network_simulator
 from microrts.algo.ppo import PPO
+from microrts.algo.a2c import A2C
 from microrts.rts_wrapper.envs.datatypes import Config
 import microrts.settings as settings 
 import os
@@ -27,8 +28,8 @@ def play(args):
             writer.add_scalar(k, results[k], iter_idx)
 
     def memo_inserter(transitions):
-        # if transitions['reward'] > 0:
-        #     print(transitions['reward'])
+        if transitions['reward'] < 0:
+            print(transitions['reward'])
         memory.push(**transitions)
 
     nn_path = args.model_path
@@ -61,15 +62,26 @@ def play(args):
     st = time.time()
     obses_n = envs.reset()
     update_steps = 16
-    ppo = PPO(
-        ac_model=nn,
-        lr=args.lr,
-        entropy_coef=args.entropy_coef,
-        value_loss_coef=args.value_loss_coef,
-        weight_decay=3e-6,
-        log_interval=args.log_interval,
-        gamma=args.gamma,
+    if args.algo == "a2c":
+        algo = A2C(
+            ac_model=nn,
+            lr=args.lr,
+            entropy_coef=args.entropy_coef,
+            value_loss_coef=args.value_loss_coef,
+            weight_decay=3e-6,
+            log_interval=args.log_interval,
+            gamma=args.gamma,
         )
+    elif args.algo == "ppo":
+        algo = PPO(
+            ac_model=nn,
+            lr=args.lr,
+            entropy_coef=args.entropy_coef,
+            value_loss_coef=args.value_loss_coef,
+            weight_decay=3e-6,
+            log_interval=args.log_interval,
+            gamma=args.gamma,
+            )
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
@@ -82,15 +94,22 @@ def play(args):
             action_i = []
             for j in range(len(obses_n[i])):
                 if not obses_n[i][j].done:
-                    action = agents[i][j].think(sp_ac=ppo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                    if args.algo == 'ppo':
+                        action = agents[i][j].think(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                    elif args.algo == 'a2c':
+                        action = agents[i][j].think(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     if T % (update_steps * num_process) == 0:
-                        ppo.update(memory, iter_idx, callback=logger, device=device)
+                        algo.update(memory, iter_idx, callback=logger, device=device)
                         iter_idx += 1
                 else:
                     action = [] # reset
                     epi_idx += .5
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
-                    agents[i][j].sum_up(sp_ac=ppo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                    writer.add_scalar("rewards", agents[i][j].rewards / (obses_n[i][j].info["time_stamp"]), epi_idx)
+                    if args.algo == 'ppo':
+                        agents[i][j].sum_up(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                    elif args.algo == 'a2c':
+                        agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     agents[i][j].forget()
                 action_i.append(action)
                 if (epi_idx + 1) % 100 == 0:
@@ -168,6 +187,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--saving-prefix",
         default='rl',
+    )
+    parser.add_argument(
+        "--algo",
+        default='a2c',
     )
     args = parser.parse_args()
     print(args)

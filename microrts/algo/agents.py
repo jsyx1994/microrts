@@ -32,9 +32,10 @@ class FrameBuffer:
 
 class Agent:
     def __init__(self, model, memory_size=10000, random_rollout_steps=128):
+        self.rewards = 0
         self.units_on_working = {}
         self._hidden_states = {} # id -> hidden_states
-        # self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=48)
+        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=63)
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
         # self._memory = ReplayBuffer(memory_size)
@@ -42,14 +43,25 @@ class Agent:
         # self.last = []
 
     def forget(self):
+        self.rewards = 0
         self.units_on_working.clear()
         self.steps = 0
         self._hidden_states.clear()
         # self._frame_buffer.refresh()
+    
+    def reward_util(self,reward, start_at, end_at, punish_ratio=-.01):
+        """[summary]
+        
+        Arguments:
+            start_at {[type]} -- [description]
+            end_at {[type]} -- [description]
+        """
+        self.rewards += reward
+        return punish_ratio * (end_at - start_at) + reward
 
     
-    def get_memory(self):
-        return self._memory
+    # def get_memory(self):
+    #     return self._memory
     
     def sum_up(self,sp_ac=None, callback=None, **kwargs):
         self.think(sp_ac,callback, **kwargs)
@@ -71,8 +83,9 @@ class Agent:
 
         obs     = obses.observation
         info    = obses.info
-        reward  = obses.reward
+        reward  = obses.reward 
         done    = obses.done
+        time_stamp = info["time_stamp"]
 
         if "accelerator" in kwargs:
             device = kwargs["accelerator"]
@@ -87,9 +100,9 @@ class Agent:
         del kwargs
 
         sp_ac = sp_ac if sp_ac else self.brain
-        # self._frame_buffer.push(obs)
+        self._frame_buffer.push(obs)
 
-        # obs = self._frame_buffer.fetch()
+        obs = self._frame_buffer.fetch()
         # import torch
         # print(self.brain.critic_forward(torch.from_numpy(obs).float().unsqueeze(0)))
         # input()
@@ -125,16 +138,13 @@ class Agent:
             key_to_del = []
             for _id in self.units_on_working:
                 if int(_id) not in units_on_field and callback:
-                    # print("yes")
-                    # input()
                     key_to_del.append(_id)
-                    # print(done, reward)
-                    # input()
                     callback({
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
-                        "reward":reward,
+                        "reward": self.reward_util(reward, time_stamp, self.units_on_working[_id][2]),
+                        # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                     })
@@ -151,7 +161,8 @@ class Agent:
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
-                        "reward":reward,
+                        # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
+                        "reward": self.reward_util(reward, time_stamp, self.units_on_working[_id][2]),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         }
@@ -159,7 +170,7 @@ class Agent:
                     # print(self.brain.critic_forward(torch.from_numpy(transition['obs_t']).float().unsqueeze(0)))
                     count += 1
                 
-                self.units_on_working[str(u.ID)] = (np.copy(obs), (u, a))
+                self.units_on_working[str(u.ID)] = (np.copy(obs), (u, a), time_stamp)
                 # push to agents' memory
                 # if transition:
                 #     self._memory.push(**transition)

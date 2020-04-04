@@ -57,13 +57,13 @@ class A2C:
 
                 # rewards = rewards + m.entropy().unsqueeze(0)
                 pi_sa = probs.gather(1, actions)
-                targets = (rewards - 0.01 * torch.log(pi_sa) + self.gamma  * value_next * done_masks)
+                targets = (rewards - 0.0 * torch.log(pi_sa) + self.gamma  * value_next * done_masks)
 
                 advantages = targets - value.detach()
                 # print(m.entropy())
                 # input()
                 entropy_loss = -entropy.mean()
-                policy_loss = -(torch.log(pi_sa + self.eps) * advantages).mean()
+                policy_loss = -(torch.log(pi_sa + self.eps) * advantages.detach()).mean()
                 value_loss = value_criteria(value, targets)
 
 
