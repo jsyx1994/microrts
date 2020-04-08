@@ -35,7 +35,7 @@ class Agent:
         self.rewards = 0
         self.units_on_working = {}
         self._hidden_states = {} # id -> hidden_states
-        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=63)
+        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=65)
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
         # self._memory = ReplayBuffer(memory_size)

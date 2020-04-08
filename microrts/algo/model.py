@@ -126,7 +126,7 @@ class ActorCritic(nn.Module):
 
     def __init__(self, 
         map_size, 
-        input_channel=63 * 16,
+        input_channel=65 * 16,
         unit_feature_size=20,
         recurrent=False,
         ):
@@ -225,7 +225,7 @@ class ActorCritic(nn.Module):
             UNIT_TYPE_NAME_WORKER: nn.Sequential(
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
-
+                init_(nn.Linear(128, 128)), nn.ReLU(),
                 init_(nn.Linear(128, WorkerAction.__members__.items().__len__())),
                 nn.Softmax(dim=1)
             ),
@@ -237,7 +237,7 @@ class ActorCritic(nn.Module):
                 # nn.Linear(64, 32), nn.ReLU(),
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
-
+                init_(nn.Linear(128, 128)), nn.ReLU(),
                 init_(nn.Linear(128, BaseAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
@@ -247,7 +247,7 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(256, 256)), nn.ReLU(),
                 # init_(nn.Linear(128, 128)), nn.ReLU(),
-                init_(nn.Linear(128, 128)), nn.ReLU(),
+                # init_(nn.Linear(128, 128)), nn.ReLU(),
                 init_(nn.Linear(128, 128)), nn.ReLU(),
 
                 init_(nn.Linear(128, LightAction.__members__.items().__len__())),
@@ -256,7 +256,9 @@ class ActorCritic(nn.Module):
             UNIT_TYPE_NAME_BARRACKS: nn.Sequential(
                 # init_(nn.Linear(128, 128)), nn.ReLU(),
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
-                init_(nn.Linear(64, BarracksAction.__members__.items().__len__())),
+                init_(nn.Linear(128, 128)), nn.ReLU(),
+
+                init_(nn.Linear(128, BarracksAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_HEAVY: nn.Sequential(
@@ -266,7 +268,8 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
                 # nn.Linear(64, 64), nn.ReLU(),
                 # nn.Linear(64, 32), nn.ReLU(),
-                init_(nn.Linear(64, HeavyAction.__members__.items().__len__())),
+                init_(nn.Linear(128, 128)), nn.ReLU(),
+                init_(nn.Linear(128, HeavyAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             )
         })

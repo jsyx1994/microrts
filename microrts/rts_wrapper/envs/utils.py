@@ -854,7 +854,7 @@ def state_encoder_v4(gs:GameState, player):
         
 
     
-    channel_action_trend = np.zeros((5 , h, w))
+    channel_action_trend = np.zeros((7 , h, w))
     
     for action in gs.actions:
         _id = action.ID # the executor id of the action

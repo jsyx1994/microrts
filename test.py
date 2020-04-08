@@ -14,6 +14,8 @@ from microrts.algo.utils import load_model
 from microrts.algo.model import ActorCritic
 from microrts.algo.replay_buffer import ReplayBuffer
 from microrts.algo.a2c import A2C
+from microrts.algo.ppo import PPO
+
 from microrts.algo.agents import Agent
 
 def self_play(args):
@@ -53,7 +55,27 @@ def self_play(args):
     
 
     agents = [Agent(model=nn) for _ in range(env.players_num)]
-    algo = A2C(nn,lr=args.lr, weight_decay=1e-7, entropy_coef=args.entropy, value_loss_coef=args.value_loss_coef, log_interval=5, gamma=args.gamma)
+    if args.algo == "a2c":
+        algo = A2C(
+            ac_model=nn,
+            lr=args.lr,
+            entropy_coef=args.entropy_coef,
+            value_loss_coef=args.value_loss_coef,
+            weight_decay=3e-6,
+            log_interval=args.log_interval,
+            gamma=args.gamma,
+        )
+    elif args.algo == "ppo":
+        algo = PPO(
+            ac_model=nn,
+            lr=args.lr,
+            entropy_coef=args.entropy_coef,
+            value_loss_coef=args.value_loss_coef,
+            weight_decay=3e-6,
+            log_interval=args.log_interval,
+            gamma=args.gamma,
+            )
+    # algo = A2C(nn,lr=args.lr, weight_decay=1e-7, entropy_coef=args.entropy, value_loss_coef=args.value_loss_coef, log_interval=5, gamma=args.gamma)
     # update_step = 64 #+ agents[0].random_rollout_steps
     # step = 0
     # bg_state = None
@@ -68,12 +90,18 @@ def self_play(args):
         while not obses_t[0].done:
             actions = []
             for i in range(len(players)):
-                action = agents[i].think(sp_ac=algo.target_net,callback=memo_inserter,way="stochastic", obses=obses_t[i], accelerator=device, mode="train")
+                if args.algo == 'ppo':
+                    action = agents[i].think(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
+                elif args.algo == 'a2c':
+                    action = agents[i].think(callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
                 actions.append(action)
             obses_tp1 = env.step(actions)
             if obses_tp1[0].done:
                 for agent in agents:
-                    agent.sum_up(sp_ac=algo.target_net,callback=memo_inserter,way="stochastic", obses=obses_tp1[i], accelerator=device, mode="train")
+                    if args.algo == 'ppo':
+                        agents[i].sum_up(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+                    elif args.algo == 'a2c':
+                        agents[i].sum_up(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
                     agent.forget()
             # if len(memory) >= update_step:
             # # if step >= 5:
@@ -128,12 +156,17 @@ if __name__ == '__main__':
         default=False,
     )
     parser.add_argument(
+        '--log_interval',
+        type=int,
+        default=int(100),
+    )
+    parser.add_argument(
         '-lr',
         type=float,
         default=1e-4,
     )
     parser.add_argument(
-        '--entropy',
+        '--entropy_coef',
         type=float,
         default=0.01,
     )
@@ -159,6 +192,10 @@ if __name__ == '__main__':
     parser.add_argument(
         "--saving-prefix",
         default='rl',
+    )
+    parser.add_argument(
+        "--algo",
+        default='a2c',
     )
     args = parser.parse_args()
     print(args)
