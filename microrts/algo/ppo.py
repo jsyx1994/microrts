@@ -81,7 +81,7 @@ class PPO:
                 # print(rewards)
                 # print(torch.tanh(rewards))
                 # input()
-                targets = rewards -  .1 * log_pi_sa + self.gamma  * value_next * done_masks
+                targets = rewards -  .2 * log_pi_sa + self.gamma  * value_next * done_masks
 
                 advantages = (targets - value_old).detach()
                 # print(m.entropy())

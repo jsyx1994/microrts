@@ -862,6 +862,7 @@ def state_encoder_v4(gs:GameState, player):
         _unit = id_location_map[_id]
         _x, _y = _unit.x, _unit.y
         atk_x, atk_y = _action.x, _action.y  # the box location under attack
+
         _one_hot_action_trend_pos = game_action_translator(_unit, _action)
         channel_action_trend[_one_hot_action_trend_pos][_x][_y] = 1
 

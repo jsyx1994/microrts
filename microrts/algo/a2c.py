@@ -64,6 +64,8 @@ class A2C:
                 # input()
                 entropy_loss = -entropy.mean()
                 policy_loss = -(torch.log(pi_sa + self.eps) * advantages.detach()).mean()
+                # print(len(rewards))
+                # input()
                 value_loss = value_criteria(value, targets)
 
 

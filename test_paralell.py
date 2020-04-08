@@ -28,9 +28,12 @@ def play(args):
             writer.add_scalar(k, results[k], iter_idx)
 
     def memo_inserter(transitions):
+        nonlocal T
+        T += 1
         if transitions['reward'] < 0:
             print(transitions['reward'])
         memory.push(**transitions)
+
 
     nn_path = args.model_path
     start_from_scratch = nn_path is None
@@ -61,7 +64,8 @@ def play(args):
     frames = 0
     st = time.time()
     obses_n = envs.reset()
-    update_steps = 16
+    update_steps = 32
+    T = 1
     if args.algo == "a2c":
         algo = A2C(
             ac_model=nn,
@@ -85,9 +89,7 @@ def play(args):
     writer = SummaryWriter()
     iter_idx = 0
     epi_idx = 0
-    T = 0
     while 1:
-        T += 1
         time_stamp  = []
         actions_n = []
         for i in range(num_process):
@@ -98,9 +100,6 @@ def play(args):
                         action = agents[i][j].think(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     elif args.algo == 'a2c':
                         action = agents[i][j].think(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
-                    if T % (update_steps * num_process) == 0:
-                        algo.update(memory, iter_idx, callback=logger, device=device)
-                        iter_idx += 1
                 else:
                     action = [] # reset
                     epi_idx += .5
@@ -112,6 +111,14 @@ def play(args):
                         agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     agents[i][j].forget()
                 action_i.append(action)
+
+                if T % (update_steps * num_process) == 0:
+                    T = 1
+                    # print(T)
+                    # input() 
+                    algo.update(memory, iter_idx, callback=logger, device=device)
+                    iter_idx += 1
+
                 if (epi_idx + 1) % 100 == 0:
                     torch.save(nn.state_dict(), os.path.join(settings.models_dir, args.saving_prefix + str(int(epi_idx)) + ".pth"))
             actions_n.append(action_i)

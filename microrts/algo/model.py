@@ -238,7 +238,7 @@ class ActorCritic(nn.Module):
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
                 # init_(nn.Linear(64, 64)), nn.ReLU(),
 
-                init_(nn.Linear(64, BaseAction.__members__.items().__len__())),
+                init_(nn.Linear(128, BaseAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_LIGHT: nn.Sequential(
