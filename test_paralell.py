@@ -30,8 +30,8 @@ def play(args):
     def memo_inserter(transitions):
         nonlocal T
         T += 1
-        if transitions['reward'] < 0:
-            print(transitions['reward'])
+        # if transitions['reward'] < 0:
+        #     print(transitions['reward'])
         memory.push(**transitions)
 
 

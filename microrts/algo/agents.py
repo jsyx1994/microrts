@@ -143,7 +143,7 @@ class Agent:
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
-                        "reward": self.reward_util(reward, time_stamp, self.units_on_working[_id][2]),
+                        "reward": self.reward_util(reward, start_at=self.units_on_working[_id][2], end_at=time_stamp),
                         # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
@@ -162,7 +162,7 @@ class Agent:
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
                         # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
-                        "reward": self.reward_util(reward, time_stamp, self.units_on_working[_id][2]),
+                        "reward": self.reward_util(reward, start_at=self.units_on_working[_id][2], end_at=time_stamp),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         }

@@ -52,8 +52,11 @@ class PPO:
             if sps_dict[key]:
                 states, units, actions, next_states, rewards, hxses, done_masks = sps_dict[key].to(device)
                 if self.actor_critic.recurrent:
-                    value = self.target_net.critic_forward(states)
-                    probs, _ = self.actor_critic.actor_forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
+                    value_old, probs_old, _ = self.target_net.forward(actor_type=key,spatial_feature=states,unit_feature=units)
+                    value, probs, _ = self.actor_critic.forward(actor_type=key,spatial_feature=states,unit_feature=units)
+
+                    # value = self.target_net.critic_forward(states)
+                    # probs, _ = self.actor_critic.actor_forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
                     # value, probs, _ = self.actor_critic.forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
                 else:
                     # value = self.target_net.critic_forward(states)
