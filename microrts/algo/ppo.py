@@ -129,6 +129,6 @@ class PPO:
         #     self.target_net = copy.deepcopy(self.actor_critic)
         #     # self.target_net.parameters = 0.001 * self.actor_critic.parameters + 0.999 * self.target_net.parameters
         with torch.no_grad():
-            soft_update(self.target_net, self.actor_critic, tau=.001)           
+            soft_update(self.target_net, self.actor_critic, tau=.005)           
         rollouts.refresh()
 
