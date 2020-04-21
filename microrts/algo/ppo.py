@@ -66,7 +66,7 @@ class PPO:
                     value, probs, _ = self.actor_critic.forward(actor_type=key,spatial_feature=states,unit_feature=units)
                 # m = torch.distributions.Categorical(probs=probs)
 
-                entropy = - (probs * torch.log(probs)).sum(dim=1)
+                entropy = - (probs * torch.log(probs)).mean()
                 value_next = self.target_net.critic_forward(next_states).detach()
                 # value_next = self.actor_critic.critic_forward(next_states).detach()
 
@@ -84,28 +84,31 @@ class PPO:
                 # print(rewards)
                 # print(torch.tanh(rewards))
                 # input()
-                targets = rewards -  .2 * log_pi_sa + self.gamma  * value_next * done_masks
+                targets = rewards -  .0 * log_pi_sa + self.gamma  * value_next * done_masks
 
                 advantages = (targets - value_old).detach()
                 # print(m.entropy())
                 # input()
-                entropy_loss = -entropy.mean()
+                entropy_loss = -entropy
                 ratio = pi_sa / pi_sa_old
                 clip_ratio = 0.2
                 clip_adv = torch.clamp(ratio, 1-clip_ratio, 1+clip_ratio) * advantages
-                policy_loss = -(torch.min(ratio * advantages, clip_adv)).mean() # + 0.04 * entropy_loss
+                policy_loss = -(torch.min(ratio * advantages, clip_adv)).mean()  #+ self.entropy_coef * entropy_loss
                 # policy_loss = -(torch.log(pi_sa + self.eps) * advantages.detach()).mean()
                 # policy_loss = (-pi_sa/ pi_sa_old * advantages).mean()
 
                 value_loss = value_criteria(value, targets)
 
 
-                all_loss = policy_loss + value_loss * self.value_loss_coef  #+ self.entropy_coef * entropy_loss
+                all_loss = policy_loss + value_loss * self.value_loss_coef  + self.entropy_coef * entropy_loss
                 
                 total_loss += all_loss
                 total_rewards += rewards.mean()
                 # all_loss = value_loss * self.value_loss_coef + policy_loss - dist_entropy * self.entropy_coef
                 # all_loss.backward()
+                # print("--------------")
+                # print(key, advantages)
+                # input()
 
 
         optimizer.zero_grad()
@@ -129,6 +132,6 @@ class PPO:
         #     self.target_net = copy.deepcopy(self.actor_critic)
         #     # self.target_net.parameters = 0.001 * self.actor_critic.parameters + 0.999 * self.target_net.parameters
         with torch.no_grad():
-            soft_update(self.target_net, self.actor_critic, tau=.005)           
+            soft_update(self.target_net, self.actor_critic, tau=0.001)           
         rollouts.refresh()
 

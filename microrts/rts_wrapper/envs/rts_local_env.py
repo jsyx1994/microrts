@@ -56,7 +56,7 @@ class BattleEnv(BaseEnv):
     def _obs2dataclass(obs):
         return Observations(
                     observation=obs[0],
-                    reward=obs[1],
+                    ev=obs[1],
                     done=obs[2],
                     info=obs[3]
             )

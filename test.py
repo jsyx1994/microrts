@@ -54,7 +54,7 @@ def self_play(args):
     iter_idx = 0
     
 
-    agents = [Agent(model=nn) for _ in range(env.players_num)]
+    agents = [Agent(model=nn, smooth_sample_ratio=.25) for _ in range(env.players_num)]
     if args.algo == "a2c":
         algo = A2C(
             ac_model=nn,
@@ -110,8 +110,8 @@ def self_play(args):
                 # step = 0
 
             # just for analisis
-            for i in range(len(players)):
-                players_G0[i] += obses_tp1[i].reward
+            # for i in range(len(players)):
+            #     players_G0[i] += obses_tp1[i].reward
             obses_t = obses_tp1
 
         algo.update(memory, iter_idx, device, logger)
@@ -121,9 +121,9 @@ def self_play(args):
 
         # print(players_G0)
         winner = obses_tp1[0].info["winner"]
-        writer.add_scalar("P0_rewards", players_G0[0]/obses_t[i].info["time_stamp"], epi_idx)
-        writer.add_scalar("P1_rewards", players_G0[1]/obses_t[i].info["time_stamp"], epi_idx)
-        writer.add_scalar("Return_diff", players_G0[0] - players_G0[1] , epi_idx)
+        writer.add_scalar("P0_rewards", agents[0].rewards/obses_t[i].info["time_stamp"], epi_idx)
+        writer.add_scalar("P1_rewards", agents[1].rewards/obses_t[i].info["time_stamp"], epi_idx)
+        writer.add_scalar("Return_diff", agents[0].rewards - agents[1].rewards , epi_idx)
         writer.add_scalar("TimeStamp", obses_t[i].info["time_stamp"]  , epi_idx)
 
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
@@ -137,7 +137,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--env-id",
-        default="attackHome-v0"
+        default="doubleBattle-v0"
     )
     parser.add_argument(
         '--model-path', help='path of the model to be loaded',
@@ -173,7 +173,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--value_loss_coef',
         type=float,
-        default=0.5
+        default=0.1
     )
     parser.add_argument(
         '--gamma',

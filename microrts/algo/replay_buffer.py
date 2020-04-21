@@ -16,6 +16,8 @@ class Transition:
     # action  : List[Any] # list of (Unit, int(network_action) )
     action  : Any
     obs_tp1 : np.array
+    # value   : float
+    # pi_sa   : float
     reward  : float
     hxs     : np.array
     done    : bool
@@ -75,7 +77,7 @@ class ReplayBuffer(object):
         
     def shuffle(self):
         random.shuffle(self._storage)
-        
+    
     def push(self, **kwargs):
         """Saves a transition   
 
@@ -88,6 +90,7 @@ class ReplayBuffer(object):
             hxs {np.array} -- [description]
         """
         trans = Transition(**kwargs)
+
         if self._next_idx >= len(self._storage):
             self._storage.append(trans)
         else:

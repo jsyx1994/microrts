@@ -19,7 +19,7 @@ def make_env(env_id):
     return _thunk
 
 
-def make_vec_envs(env_id, num_processes, context, model):
+def make_vec_envs(env_id, num_processes, context, model,smooth_raitio=0):
     
     assert num_processes > 0, "Can not make no env!"
     envs = [make_env(env_id) for i in range(num_processes)]
@@ -32,7 +32,7 @@ def make_vec_envs(env_id, num_processes, context, model):
     config = get_config(env_id)
     nagents = 2 if (config.ai1_type == "socketAI" and config.ai2_type == "socketAI") else 1
 
-    agents = [[Agent(model) for _ in range(nagents)] for _ in range(num_processes)]
+    agents = [[Agent(model,smooth_sample_ratio=smooth_raitio) for _ in range(nagents)] for _ in range(num_processes)]
 
 
     envs = ParallelVecEnv(envs, context=context)

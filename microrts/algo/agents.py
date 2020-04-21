@@ -31,13 +31,15 @@ class FrameBuffer:
         return self._storage.reshape(-1, *self._shape[-2:])
 
 class Agent:
-    def __init__(self, model, memory_size=10000, random_rollout_steps=128):
+    def __init__(self, model, memory_size=10000, random_rollout_steps=128, smooth_sample_ratio=None):
         self.rewards = 0
+        self.steps = 0
         self.units_on_working = {}
         self._hidden_states = {} # id -> hidden_states
         self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=65)
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
+        self.smooth_sample_ratio = smooth_sample_ratio
         # self._memory = ReplayBuffer(memory_size)
 
         # self.last = []
@@ -49,15 +51,17 @@ class Agent:
         self._hidden_states.clear()
         # self._frame_buffer.refresh()
     
-    def reward_util(self,reward, start_at, end_at, punish_ratio=-.01):
-        """[summary]
+    def reward_util(self,ev_s, ev_sp, start_at, end_at, punish_ratio=+.01):
+        """duration rewards craft
         
         Arguments:
             start_at {[type]} -- [description]
             end_at {[type]} -- [description]
         """
+        # critical
+        reward = ev_sp - ev_s
         self.rewards += reward
-        return punish_ratio * (end_at - start_at) + reward
+        return reward #- 0.01 #+ punish_ratio * (end_at - start_at)
 
     
     # def get_memory(self):
@@ -71,7 +75,7 @@ class Agent:
             nn related result to Replay Buffer. More
         Arguments:
             kwargs: 
-                obses {dataclass} -- observation: Any,  reward: float , done: bool, info: Dict
+                obses {dataclass} -- observation: Any,  ev: float , done: bool, info: Dict
                 accelerator {str} -- device to load torch tensors
                 mode {str} -- "train" or "eval", if "train" is present, then transitions should be sampled
         Returns:
@@ -83,7 +87,7 @@ class Agent:
 
         obs     = obses.observation
         info    = obses.info
-        reward  = obses.reward 
+        ev      = obses.ev 
         done    = obses.done
         time_stamp = info["time_stamp"]
 
@@ -100,16 +104,25 @@ class Agent:
         del kwargs
 
         sp_ac = sp_ac if sp_ac else self.brain
-        self._frame_buffer.push(obs)
-
-        obs = self._frame_buffer.fetch()
+        # self._frame_buffer.push(obs)
+        # obs = self._frame_buffer.fetch()
         # import torch
         # print(self.brain.critic_forward(torch.from_numpy(obs).float().unsqueeze(0)))
         # input()
-
+        sp_ac.eval()
 
         sampler = action_sampler_v2
-        # self.steps += 1
+
+        if self.smooth_sample_ratio is not None:
+            rollout = np.random.sample()
+            if rollout < self.smooth_sample_ratio:
+                sampler = network_simulator
+                # print(sampler)
+            # self.steps += 1
+            # if self.steps > self.smooth_sample_step:
+            #     sampler = network_simulator
+            #     self.steps = 0
+
         samples, hxses = sampler(
                 info=info,
                 model=sp_ac,
@@ -118,6 +131,7 @@ class Agent:
                 mode=way,
                 hidden_states=self._hidden_states,
                 )
+
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in samples]
 
         if self.brain.recurrent:
@@ -127,9 +141,8 @@ class Agent:
         transition = {}
         count = 0
 
-
-
         if mode == "train" and sampler is not network_simulator:
+        # if mode == "train" and sampler:
             # sample the transition in a correct way
 
             # check dead units and insert transaction
@@ -139,11 +152,12 @@ class Agent:
             for _id in self.units_on_working:
                 if int(_id) not in units_on_field and callback:
                     key_to_del.append(_id)
-                    callback({
+                    callback(transitions=
+                    {
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
-                        "reward": self.reward_util(reward, start_at=self.units_on_working[_id][2], end_at=time_stamp),
+                        "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp),
                         # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
@@ -162,24 +176,27 @@ class Agent:
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
                         # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
-                        "reward": self.reward_util(reward, start_at=self.units_on_working[_id][2], end_at=time_stamp),
+                        "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         }
                     # print(reward)
                     # print(self.brain.critic_forward(torch.from_numpy(transition['obs_t']).float().unsqueeze(0)))
                     count += 1
-                
-                self.units_on_working[str(u.ID)] = (np.copy(obs), (u, a), time_stamp)
+                ####################################      0          1         2      3
+                self.units_on_working[str(u.ID)] = (np.copy(obs), (u, a), time_stamp, ev)
                 # push to agents' memory
                 # if transition:
                 #     self._memory.push(**transition)
                 #     transition.clear()
                 if transition and callback:
-                    callback(transition)
+                    callback(transitions=transition)
                     # print(count)
                     count = 0
                     transition.clear()
+        else:
+            # print("network simulator")
+            pass
         # print(unzip(*samples))
         # input()
 

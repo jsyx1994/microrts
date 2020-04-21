@@ -147,7 +147,7 @@ for _action in action_collection:
 
 @dataclass
 class Observations:
-    reward: float
+    ev: float
     observation: Any
     done: bool
     info: Dict
@@ -273,7 +273,7 @@ class UnitValidAction:
 @dataclass
 class GsWrapper:
     gs: GameState
-    reward: float
+    ev: float
     winner: int
     validActions: List[UnitValidAction]
     done: Optional[int] = 0 # 0: continue; 1: truly end; 2: time up

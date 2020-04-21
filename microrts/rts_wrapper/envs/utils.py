@@ -101,7 +101,13 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
     samples = []
     hxses = []
 
+    # Categorize valid units need sampling
     for uva in unit_valid_actions:
+        _type = uva.unit.type
+        if _type == UNIT_TYPE_NAME_BASE and info["resources"] <= 0:
+            continue
+        if _type == UNIT_TYPE_NAME_BARRACKS and info["resources"] <= 1: # resource less than the lowest cost of production
+            continue
         uva_dict[uva.unit.type].append(uva)
     # print(len(unit_valid_actions))
 
@@ -117,7 +123,7 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
                     if u.ID in hidden_states.keys(): # check if hidden_states has hidden state of the unit, otherwise, init to zero
                         _hxses.append(hidden_states[u.ID])
                     else:
-                        _hxses.append(np.zeros((64)))
+                        _hxses.append(np.zeros((256)))
             
             batch_dict[key] = (np.array(states), np.array(units), np.array(_hxses))
     # print(1, time.time() - st)
@@ -148,6 +154,7 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
                     
                     # print(state)
                     print(probs)
+                    # print(m.entropy())
                     # input()
 
                     idxes = m.sample()
@@ -170,7 +177,6 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
 
                         actions.append(list(AGENT_ACTIONS_MAP[key])[idx])
                     # print(x.index(0))
-
                 sample = list(zip(uva_dict[key], actions))  # once all the units's actions of the TYPE is sampled
                 samples.extend(sample)
                 # print(len(actions), len(hxses))
@@ -232,17 +238,19 @@ def signal_wrapper(raw):
     # print(raw)
     curr_player = int(raw.split('\n')[0].split()[1])
     gs_wrapper = from_dict(data_class=GsWrapper, data=json.loads(raw.split('\n')[1]))
+    pgs = gs_wrapper.gs.pgs
     # gs_wrapper = GsWrapper(**json.loads(raw.split('\n')[1]))
     # print(raw)
     # input()
     observation = state_encoder_v4(gs_wrapper.gs, curr_player)
-    reward = gs_wrapper.reward
+    ev = gs_wrapper.ev
     done = gs_wrapper.done
     # self.game_time = gs_wrapper.gs.time
     info = {
         "unit_valid_actions": gs_wrapper.validActions,  # friends and their valid actions
         # "units_list": [u for u in gs_wrapper.gs.pgs.units],
         # "enemies_actions": None,
+        "resources": pgs.players[curr_player].resources,
         "units_on_field": [u.ID for u in gs_wrapper.gs.pgs.units],
         "winner": gs_wrapper.winner,
         "current_player": curr_player,
@@ -250,7 +258,7 @@ def signal_wrapper(raw):
         "map_size": [gs_wrapper.gs.pgs.height, gs_wrapper.gs.pgs.width],
         "time_stamp": int(gs_wrapper.gs.time),
     }
-    return observation, reward, done, info
+    return observation, ev, done, info
 
 
 def network_simulator(info, **args):
@@ -269,7 +277,7 @@ def network_simulator(info, **args):
         unit_validaction_choices.append((uva, choice))
     # print(unit_validaction_choices)
     # input()
-    return unit_validaction_choices
+    return unit_validaction_choices, None
 
 
 def extract_record(gs: GameState, sl_target: int) -> Record:
@@ -665,8 +673,8 @@ def state_encoder_v2(gs: GameState, player):
     channel_opp_resources = np.zeros((8, h, w))
     _one_hot_my_resource_pos  = list(resource_encoder(my_resources)).index(1)
     _one_hot_opp_resource_pos = list(resource_encoder(opp_resources)).index(1)
-    # channel_my_resources[_one_hot_my_resource_pos,:,:]  = 1
-    # channel_my_resources[_one_hot_opp_resource_pos,:,:] = 1
+    channel_my_resources[_one_hot_my_resource_pos,:,:]  = 1
+    channel_my_resources[_one_hot_opp_resource_pos,:,:] = 1
 
 
     id_location_map = {}
@@ -749,7 +757,9 @@ def state_encoder_v4(gs:GameState, player):
             can_walk.append(0)
 
     channel_whether_walkable = np.array([cannot_walk, cannot_walk]).reshape((2, h, w))
-    channel_resource_size = np.zeros((8, h, w))
+    
+    channel_my_cargo_size = np.zeros((8, h, w))
+    channel_opp_cargo_size = np.zeros((8, h, w))
     
     # whether is a resource
     channel_whether_resource = np.zeros((2, h, w))
@@ -786,8 +796,9 @@ def state_encoder_v4(gs:GameState, player):
     channel_my_resources[_one_hot_my_resource_pos,:,:]  = 1
     channel_opp_resources[_one_hot_opp_resource_pos,:,:] = 1
 
-    channel_hp_ratio = np.zeros((6, h, w))
-    channel_action_trend = np.zeros((5 , h, w))
+    channel_my_hp_ratio  = np.zeros((6, h, w))
+    channel_opp_hp_ratio = np.zeros((6, h, w))
+    # channel_action_trend = np.zeros((5 , h, w))
 
     id_location_map = {}
     for unit in units:
@@ -799,11 +810,16 @@ def state_encoder_v4(gs:GameState, player):
         _id = unit.ID
         id_location_map[_id] = unit
 
-        _one_hot_hp_ratio_pos = hp_ratio_encoder(_hp / UTT_DICT[_type].hp)
-        channel_hp_ratio[_one_hot_hp_ratio_pos][_x][_y] = 1
-
         _one_hot_resource_pos = list(resource_encoder(_resource_carried)).index(1)
-        channel_resource_size[_one_hot_resource_pos][_x][_y] = 1
+
+        _one_hot_hp_ratio_pos = hp_ratio_encoder(_hp / UTT_DICT[_type].hp)
+        if _owner == current_player:
+            channel_my_cargo_size[_one_hot_resource_pos][_x][_y] = 1
+            channel_my_hp_ratio[_one_hot_hp_ratio_pos][_x][_y] = 1
+        elif _owner == 1-current_player:
+            channel_opp_cargo_size[_one_hot_resource_pos][_x][_y] = 1
+            channel_opp_hp_ratio[_one_hot_hp_ratio_pos][_x][_y] = 1
+
         if _type == UNIT_TYPE_NAME_RESOURCE:
             channel_whether_resource[1][_x][_y] = 1
         else:
@@ -869,12 +885,12 @@ def state_encoder_v4(gs:GameState, player):
     spatial_features = np.vstack(
         (
             channel_whether_walkable, # 2
-            channel_resource_size,    # 8
-            channel_hp_ratio, #6
             channel_whether_resource, #2
-            channel_action_trend, #5
-            # 23
+            channel_action_trend, #7
+            # 11
 
+            channel_my_cargo_size,
+            channel_my_hp_ratio,
             channel_my_base,
             channel_my_barracks,
             channel_my_worker,
@@ -882,8 +898,10 @@ def state_encoder_v4(gs:GameState, player):
             channel_my_heavy,
             channel_my_range,
             channel_my_resources,
-            # 20
+            # 34
 
+            channel_opp_cargo_size,
+            channel_opp_hp_ratio,
             channel_opp_base,
             channel_opp_barracks,
             channel_opp_worker,
@@ -891,8 +909,8 @@ def state_encoder_v4(gs:GameState, player):
             channel_opp_heavy,
             channel_opp_range,
             channel_opp_resources,
-            # 20
-            # total: 63
+            # 34
+            # total: 65
                                     
         ),
     )
@@ -985,7 +1003,7 @@ def state_encoder_v3(gs: GameState, player):
         id_location_map[_id] = unit
 
     
-    channel_action_trend = np.zeros((5 , h, w))
+    channel_action_trend = np.zeros((7 , h, w))
     
     for action in gs.actions:
         _id = action.ID # the executor id of the action
@@ -1010,9 +1028,9 @@ def state_encoder_v3(gs: GameState, player):
             channel_player,           # 2
             # 43
 
-            channel_action_trend      # 5
+            channel_action_trend      # 7
             
-            # 48 
+            # 50 
                                     
         ),
     )
