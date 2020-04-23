@@ -80,16 +80,15 @@ class A2C:
                 continue
 
             if sps_dict[key]:
-                states, units, actions, next_states, rewards, hxses, done_masks = sps_dict[key].to(device)
+                states, units, actions, next_states, rewards, hxses, done_masks, durations = sps_dict[key].to(device)
+                # print(durations)
+                # print(done_masks)
                 # rets = discount_cumsum(rewards, self.gamma)
-                # print(rets)
-                # print(rets.size())
-                # input()
                 if self.actor_critic.recurrent:
                     value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
                 else:
                     value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
-                # print(value)
+                print(value)
                 # m = torch.distributions.Categorical(probs=probs)
                 # print(probs.is_leaf)
                 # input()
@@ -103,7 +102,7 @@ class A2C:
                 # rewards = rewards + m.entropy().unsqueeze(0)
                 pi_sa = probs.gather(1, actions)
                 # rewards = (rewards - rewards.mean())/rewards.std()
-                targets = rewards + self.gamma  * value_next * done_masks
+                targets = rewards + (self.gamma ** durations) * value_next * done_masks
                 advantages = targets - value.detach()
                 # adv = (advantages - advantages.mean()) / advantages.std()
                 # print(adv)

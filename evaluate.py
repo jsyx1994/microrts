@@ -57,7 +57,7 @@ def evaluate(
     # from torch.utils.tensorboard import SummaryWriter
     import time
     # writer = SummaryWriter()
-    agents = [Agent(model=nn, smooth_sample_ratio=.1) for _ in range(env.players_num)]
+    agents = [Agent(model=nn, smooth_sample_ratio=0) for _ in range(env.players_num)]
 
     # print(players[0].brain is players[1].brain) # True
 

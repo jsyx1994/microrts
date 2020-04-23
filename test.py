@@ -26,6 +26,9 @@ def self_play(args):
     def memo_inserter(transitions):
         if transitions['reward'] > 0:
             print(transitions['reward'])
+        if transitions['done'] == 2:
+            print(transitions['done'])
+            input()
         memory.push(**transitions)
     
     
@@ -54,7 +57,7 @@ def self_play(args):
     iter_idx = 0
     
 
-    agents = [Agent(model=nn, smooth_sample_ratio=.25) for _ in range(env.players_num)]
+    agents = [Agent(model=nn, smooth_sample_ratio=0) for _ in range(env.players_num)]
     if args.algo == "a2c":
         algo = A2C(
             ac_model=nn,
@@ -97,6 +100,7 @@ def self_play(args):
                 actions.append(action)
             obses_tp1 = env.step(actions)
             if obses_tp1[0].done:
+                # print(obses_tp1[0].done)
                 for agent in agents:
                     if args.algo == 'ppo':
                         agents[i].sum_up(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
@@ -137,7 +141,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--env-id",
-        default="doubleBattle-v0"
+        default="singleBattle-v0"
     )
     parser.add_argument(
         '--model-path', help='path of the model to be loaded',

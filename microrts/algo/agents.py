@@ -61,7 +61,7 @@ class Agent:
         # critical
         reward = ev_sp - ev_s
         self.rewards += reward
-        return reward #- 0.01 #+ punish_ratio * (end_at - start_at)
+        return reward #+ punish_ratio * (end_at - start_at)
 
     
     # def get_memory(self):
@@ -103,6 +103,22 @@ class Agent:
         
         del kwargs
 
+        if done == 2: # gameover state, should not sample actions, add transition by force
+            # print( info['unit_valid_actions']) # []
+            for _id in self.units_on_working:
+                callback(transitions={
+                    "obs_t":self.units_on_working[_id][0],
+                    "action":self.units_on_working[_id][1],
+                    "obs_tp1":np.copy(obs),
+                    "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp),
+                    # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
+                    "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
+                    "done":done,
+                    "duration": time_stamp - self.units_on_working[_id][2],
+                })
+            return []
+
+
         sp_ac = sp_ac if sp_ac else self.brain
         # self._frame_buffer.push(obs)
         # obs = self._frame_buffer.fetch()
@@ -122,6 +138,7 @@ class Agent:
             # if self.steps > self.smooth_sample_step:
             #     sampler = network_simulator
             #     self.steps = 0
+        
 
         samples, hxses = sampler(
                 info=info,
@@ -131,6 +148,7 @@ class Agent:
                 mode=way,
                 hidden_states=self._hidden_states,
                 )
+
 
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in samples]
 
@@ -161,10 +179,10 @@ class Agent:
                         # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
+                        "duration": time_stamp - self.units_on_working[_id][2],
                     })
             for k in key_to_del:
                 del self.units_on_working[k]
-
 
             for u, a in network_unit_actions:
                 _id = str(u.ID)
@@ -179,7 +197,11 @@ class Agent:
                         "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
-                        }
+                        "duration": time_stamp - self.units_on_working[_id][2],
+                        }  
+                    if done == 2:
+                        print(transition)      
+                        input()         
                     # print(reward)
                     # print(self.brain.critic_forward(torch.from_numpy(transition['obs_t']).float().unsqueeze(0)))
                     count += 1
@@ -199,6 +221,5 @@ class Agent:
             pass
         # print(unzip(*samples))
         # input()
-
 
         return samples

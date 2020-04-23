@@ -118,7 +118,8 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
             for uva in uva_dict[key]:
                 u = uva.unit
                 states.append(state)
-                units.append(np.hstack((unit_feature_encoder(u, map_size), encoded_utt_dict[u.type])))
+                # units.append(np.hstack((unit_feature_encoder(u, map_size), encoded_utt_dict[u.type])))
+                units.append(unit_feature_encoder(u, map_size))
                 if model.recurrent:
                     if u.ID in hidden_states.keys(): # check if hidden_states has hidden state of the unit, otherwise, init to zero
                         _hxses.append(hidden_states[u.ID])
@@ -1483,19 +1484,32 @@ def unit_feature_encoder(unit:Unit, map_size:list):
 
     x_absolute_feature = np.array([unit_x])
     y_absolute_feature = np.array([unit_y])
+
     resource_feature = resource_encoder(unit_resource)
-    hp_ratio_feature = np.array([unit_hp / UTT_DICT[unit_type].hp])
+    # hp_ratio_feature = np.array([unit_hp / UTT_DICT[unit_type].hp])
+    hp_ratio_feature = np.zeros((6,))
+    hp_ratio_feature[hp_ratio_encoder(unit_hp / UTT_DICT[unit_type].hp)] = 1
+
+    loc_x_feature = np.eye(1,map_width,k=unit_x)[0]
+    loc_y_feature = np.eye(1,map_height,k=unit_y)[0]
+    loc_feature = np.zeros(map_size)
+    loc_feature[unit_x][unit_y] = 1
+    loc_feature = loc_feature.flatten()
 
     unit_feature = np.hstack(
         (
-            owner_feature,
-            type_feature,
+            owner_feature,  # 2
+            type_feature,      # 7
             # x_absolute_feature,
             # y_absolute_feature,
-            x_ratio_feature,
-            y_ratio_feature,
-            resource_feature,
-            hp_ratio_feature
+            hp_ratio_feature, # 6
+            resource_feature,   # 8
+            # x_ratio_feature,
+            # y_ratio_feature,
+            loc_x_feature, # map_width
+            loc_y_feature, # map_height
+            # loc_feature, # w * h
+            # hp_ratio_feature
         )
     )
     return unit_feature

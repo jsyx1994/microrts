@@ -127,7 +127,7 @@ class ActorCritic(nn.Module):
     def __init__(self, 
         map_size, 
         input_channel=79,
-        unit_feature_size=20,
+        # unit_feature_size=23+,
         recurrent=False,
         hidden_size=256,
         ):
@@ -144,7 +144,10 @@ class ActorCritic(nn.Module):
         
         self.recurrent = recurrent
         map_height, map_width = map_size
+        unit_feature_size = 23 + map_height + map_width #+ map_height * map_width
         self.shared_out_size = 256
+        self.conv_out_size = 16
+        self.shared_to_actor_size = 128
         self.hsz = hidden_size
 
         self.activated_agents = [
@@ -159,15 +162,19 @@ class ActorCritic(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)),nn.ReLU(),
-            # nn.BatchNorm2d(32,affine=False), nn.ReLU(),
-            # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)), #nn.ReLU(),
+            nn.BatchNorm2d(32,affine=False), nn.ReLU(),
+            init_(nn.Conv2d(32, self.conv_out_size, 1)), nn.ReLU(),
+            nn.BatchNorm2d(self.conv_out_size,affine=False), nn.ReLU(),
+
             # nn.BatchNorm2d(16,affine=False), nn.ReLU(),
             # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
             # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
             # nn.Conv2d(64, 32, 2), nn.ReLU(),
-            # nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
+            nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
+            Flatten(),
         )
+        self.conv_flatten_size = self.conv_out_size * ((map_height) * (map_width))
 
         # self.self_attn = nn.Sequential(
         #     Pic2Vector(),
@@ -180,18 +187,18 @@ class ActorCritic(nn.Module):
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0))
-        self.shared_linear = nn.Sequential(
-            Flatten(),
-            init_(nn.Linear(32 * (map_height) * (map_width), hidden_size)), nn.ReLU(),
-            # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
-            # init_(nn.Linear(256, 256)), nn.ReLU(),
-            # init_(nn.Linear(hidden_size, hidden_size)),# nn.ReLU()
-            init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
-            # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
-            # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
-            # init_(nn.Linear(128, 128)), nn.ReLU(),
-            # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
-        )
+        # self.shared_linear = nn.Sequential(
+        #     Flatten(),
+        #     init_(nn.Linear(16 * (map_height) * (map_width), hidden_size)), nn.ReLU(),
+        #     # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
+        #     # init_(nn.Linear(256, 256)), nn.ReLU(),
+        #     # init_(nn.Linear(hidden_size, hidden_size)),# nn.ReLU()
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     # init_(nn.Linear(128, 128)), nn.ReLU(),
+        #     # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
+        # )
 
 
         self.critic_mlps = nn.Sequential(
@@ -211,10 +218,11 @@ class ActorCritic(nn.Module):
         self.critic_out = init_(nn.Linear(hidden_size, 1))
 
         #-------------------------------------------#
-
+        # self.shared_to_actor = nn.Sequential(init_(nn.Linear(hidden_size, self.shared_to_actor_size)), nn.ReLU())
 
         self.actor_mlps = nn.Sequential(
-            init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, hidden_size)), nn.ReLU(),
+            # init_(nn.Linear(self.shared_out_size + unit_feature_size + encoded_utt_feature_size, hidden_size)), nn.ReLU(),
+            init_(nn.Linear(self.conv_flatten_size + unit_feature_size, hidden_size)), nn.ReLU(),
             # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
             # init_(nn.Linear(64, 64)), nn.ReLU(),
             # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
@@ -222,7 +230,7 @@ class ActorCritic(nn.Module):
             # nn.LayerNorm(normalized_shape=(64),elementwise_affine=False),
             # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
             # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
-            init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+            # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
             # nn.LayerNorm(normalized_shape=(64),elementwise_affine=False),
             init_(nn.Linear(hidden_size, hidden_size)),nn.ReLU()
             # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
@@ -287,7 +295,7 @@ class ActorCritic(nn.Module):
         # input()
         # x = Pic2Vector()(x)
         # x, _ = self.self_attn(x,x,x)
-        x = self.shared_linear(x)
+        # x = self.shared_linear(x)
         # x = self.layer_norm(x)
 
         # print(x.shape)
@@ -315,6 +323,8 @@ class ActorCritic(nn.Module):
 
 
         x = torch.cat([x, unit_feature], dim=1)
+        # print(x.size())
+        # input()
         x = self.actor_mlps(x)
         if self.recurrent:
             x, hxs = self.gru(x.unsqueeze(0), hxses)
