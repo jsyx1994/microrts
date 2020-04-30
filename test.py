@@ -203,6 +203,6 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
     print(args)
-    torch.manual_seed(0)
+    torch.manual_seed(32)
     self_play(args)
     # self_play(nn_path=os.path.join(settings.models_dir, "rl999.pth"))

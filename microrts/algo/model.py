@@ -131,7 +131,7 @@ class ActorCritic(nn.Module):
 
     def __init__(self, 
         map_size, 
-        input_channel=84,
+        input_channel=81,
         # unit_feature_size=23+,
         recurrent=False,
         hidden_size=256,

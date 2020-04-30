@@ -231,6 +231,25 @@ environments = [
             }
     },
     {
+        'id': "tinygame-v0",
+        'entry_point': "microrts.rts_wrapper.envs:BattleEnv",
+        'kwargs':
+            {
+                'config': Config(
+                    ai1_type='socketAI',
+                    ai2_type='socketAI',
+                    map_path=os.path.join(settings.map_dir, '2x2/2x2.xml'),
+                    height=2,
+                    width=2,
+                    self_play=True,
+                    # period=20,
+                    max_cycles=1000,
+                    max_episodes=1000000000,
+                ),
+
+            }
+    },
+    {
         'id': "battle2v2LightMelee-v0",
         'entry_point': "microrts.rts_wrapper.envs:BattleEnv",
         'kwargs':

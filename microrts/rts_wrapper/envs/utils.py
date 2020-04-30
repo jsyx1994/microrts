@@ -104,10 +104,10 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
     # Categorize valid units need sampling
     for uva in unit_valid_actions:
         _type = uva.unit.type
-        if _type == UNIT_TYPE_NAME_BASE and info["resources"] <= 0:
-            continue
-        if _type == UNIT_TYPE_NAME_BARRACKS and info["resources"] <= 1: # resource less than the lowest cost of production
-            continue
+        # if _type == UNIT_TYPE_NAME_BASE and info["resources"] <= 0:
+        #     continue
+        # if _type == UNIT_TYPE_NAME_BARRACKS and info["resources"] <= 1: # resource less than the lowest cost of production
+        #     continue
         uva_dict[uva.unit.type].append(uva)
     # print(len(unit_valid_actions))
 
@@ -253,7 +253,7 @@ def signal_wrapper(raw):
     # input()
     ev = gs_wrapper.ev
     done = gs_wrapper.done
-    observation = state_encoder_v4(gs_wrapper.gs, curr_player, done)
+    observation = state_encoder_v4(gs_wrapper.gs, curr_player)
     # self.game_time = gs_wrapper.gs.time
     info = {
         "unit_valid_actions": gs_wrapper.validActions,  # friends and their valid actions
@@ -736,7 +736,7 @@ def state_encoder_v2(gs: GameState, player):
     # input()
     return spatial_features
 
-def state_encoder_v4(gs:GameState, player, done):
+def state_encoder_v4(gs:GameState, player):
     """Plain encoder for network
     
     Arguments:
@@ -810,8 +810,8 @@ def state_encoder_v4(gs:GameState, player, done):
     channel_who_am_i = np.zeros((2,h,w))
     channel_who_am_i[current_player,:,:] = 1
 
-    channel_wheather_done = np.zeros((3,h,w))
-    channel_wheather_done[done] = 1
+    # channel_wheather_done = np.zeros((3,h,w))
+    # channel_wheather_done[done] = 1
 
     id_location_map = {}
     for unit in units:
@@ -901,8 +901,8 @@ def state_encoder_v4(gs:GameState, player, done):
             channel_whether_walkable, # 2
             channel_whether_resource, #2
             channel_action_trend, #7
-            channel_wheather_done, # 3
-            # 16
+            # channel_wheather_done, # 3
+            # 13
 
             channel_my_cargo_size,
             channel_my_hp_ratio,
@@ -926,7 +926,7 @@ def state_encoder_v4(gs:GameState, player, done):
             channel_opp_resources,
             # 34
 
-            # total: 84
+            # total: 81
                                     
         ),
     )
