@@ -54,7 +54,7 @@ def play(args):
         nn = load_model(nn_path, map_size)
     
     # nn.share_memory()
-    device = torch.device("cuda:2" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     # device = "cpu"
     print(device)
     # input()
@@ -113,11 +113,14 @@ def play(args):
                     elif args.algo == 'a2c':
                         agents[i][j].sum_up(callback=partial(memo_inserter, buffer=buffers[i]), obses=obses_n[i][j], accelerator=device, mode="train")
                     # buffers[i]
-                    print(len(buffers[i]))
-                    algo.update(buffers[i], iter_idx, callback=logger, device=device)
                     agents[i][j].forget()
                 action_i.append(action)
-
+                if (epi_idx + 1) % 100 == 0:
+                    torch.save(nn.state_dict(), os.path.join(settings.models_dir, args.saving_prefix + str(int(epi_idx)) + ".pth"))
+            
+            if obses_n[i][0].done:
+                print(len(buffers[i]))
+                algo.update(buffers[i], iter_idx, callback=logger, device=device)
                 # if T % (update_steps * num_process) == 0:
                 #     T = 1
                 #     # print('Update...')
@@ -125,8 +128,7 @@ def play(args):
                 #     algo.update(memory, iter_idx, callback=logger, device=device)
                 #     iter_idx += 1
 
-                if (epi_idx + 1) % 100 == 0:
-                    torch.save(nn.state_dict(), os.path.join(settings.models_dir, args.saving_prefix + str(int(epi_idx)) + ".pth"))
+
             actions_n.append(action_i)
     
         if time_stamp:
@@ -153,6 +155,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         '--num-process',
+        type=int,
         default=4
     )
     parser.add_argument(

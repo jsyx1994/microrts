@@ -34,8 +34,13 @@ class Pic2Vector(nn.Module):
     convent matrix to Vectors
     each pixel is like embedding to it's channel's dimension
     """
+    def __init__(self, channel_size=None):
+        super().__init__()
+        self.channel_size = channel_size
+
     def forward(self, input):
-        batch_size, channel_size = input.size(0), input.size(1)
+        batch_size = input.size(0)
+        channel_size = input.size(1) if not self.channel_size else self.channel_size
         return input.reshape(batch_size, channel_size, -1).transpose(-2, -1)  # transpose to keep d_model last
 
 class MultiHeadAttention(nn.Module):
@@ -57,7 +62,7 @@ class MultiHeadAttention(nn.Module):
         self.attention = ScaledDotProductAttention(temperature=d_k ** 0.5)
 
         self.dropout = nn.Dropout(dropout)
-        self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
+        # self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
 
 
     def forward(self, q, k, v, mask=None):
@@ -66,7 +71,7 @@ class MultiHeadAttention(nn.Module):
         sz_b, len_q, len_k, len_v = q.size(0), q.size(1), k.size(1), v.size(1)
 
         residual = q
-        q = self.layer_norm(q)
+        # q = self.layer_norm(q)
 
         # Pass through the pre-attention projection: b x lq x (n*dv)
         # Separate different heads: b x lq x n x dv
@@ -126,7 +131,7 @@ class ActorCritic(nn.Module):
 
     def __init__(self, 
         map_size, 
-        input_channel=79,
+        input_channel=84,
         # unit_feature_size=23+,
         recurrent=False,
         hidden_size=256,
@@ -162,10 +167,12 @@ class ActorCritic(nn.Module):
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
         self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=32, kernel_size=1)), #nn.ReLU(),
-            nn.BatchNorm2d(32,affine=False), nn.ReLU(),
-            init_(nn.Conv2d(32, self.conv_out_size, 1)), nn.ReLU(),
-            nn.BatchNorm2d(self.conv_out_size,affine=False), nn.ReLU(),
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=1)), #nn.ReLU(),
+            nn.BatchNorm2d(64), nn.ReLU(),
+            init_(nn.Conv2d(64, 32, 1)), #nn.ReLU(),
+            nn.BatchNorm2d(32), nn.ReLU(),
+            init_(nn.Conv2d(32, self.conv_out_size, 1)),# nn.ReLU(),
+            nn.BatchNorm2d(self.conv_out_size), nn.ReLU(),
 
             # nn.BatchNorm2d(16,affine=False), nn.ReLU(),
             # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
@@ -181,7 +188,8 @@ class ActorCritic(nn.Module):
         #     # nn.TransformerEncoderLayer(d_model=16, nhead=4, dim_feedforward=64, dropout=0, activation="relu"),
         # )
         # self.self_attn = nn.MultiheadAttention(embed_dim=16,num_heads=8)
-        self.self_attn = MultiHeadAttention(n_head=4,d_model=16,d_k=16,d_v=16,dropout=0)
+        self.p2v = Pic2Vector(channel_size=self.conv_out_size)
+        self.self_attn = MultiHeadAttention(n_head=2,d_model=16,d_k=16,d_v=16,dropout=0)
         # self.self_attn.share_memory()
 
 
@@ -202,7 +210,7 @@ class ActorCritic(nn.Module):
 
 
         self.critic_mlps = nn.Sequential(
-            init_(nn.Linear(self.shared_out_size, hidden_size)), nn.ReLU(),
+            init_(nn.Linear(self.conv_flatten_size, hidden_size)), nn.ReLU(),
             # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
             # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
             # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
@@ -232,6 +240,7 @@ class ActorCritic(nn.Module):
             # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
             # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
             # nn.LayerNorm(normalized_shape=(64),elementwise_affine=False),
+            init_(nn.Linear(hidden_size, hidden_size)),nn.ReLU(),
             init_(nn.Linear(hidden_size, hidden_size)),nn.ReLU()
             # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
             # nn.LayerNorm(normalized_shape=(64),elementwise_affine=False),
@@ -250,35 +259,35 @@ class ActorCritic(nn.Module):
             UNIT_TYPE_NAME_WORKER: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
-                # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, WorkerAction.__members__.items().__len__())),
                 nn.Softmax(dim=1)
             ),
             UNIT_TYPE_NAME_BASE: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
-                # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, BaseAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_LIGHT: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
-                # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, LightAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_BARRACKS: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
-                # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, BarracksAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             ),
             UNIT_TYPE_NAME_HEAVY: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
-                # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, HeavyAction.__members__.items().__len__())),
                 nn.Softmax(dim=1),
             )
@@ -293,8 +302,9 @@ class ActorCritic(nn.Module):
         x = self.shared_conv(spatial_feature)
         # print(x.shape)
         # input()
-        # x = Pic2Vector()(x)
+        # x = self.p2v(x)
         # x, _ = self.self_attn(x,x,x)
+        # x = Flatten()(x)
         # x = self.shared_linear(x)
         # x = self.layer_norm(x)
 

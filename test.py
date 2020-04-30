@@ -26,9 +26,9 @@ def self_play(args):
     def memo_inserter(transitions):
         if transitions['reward'] > 0:
             print(transitions['reward'])
-        if transitions['done'] == 2:
-            print(transitions['done'])
-            input()
+        # if transitions['done'] == 2:
+        #     print(transitions['done'])
+        #     input()
         memory.push(**transitions)
     
     
@@ -126,8 +126,8 @@ def self_play(args):
         # print(players_G0)
         winner = obses_tp1[0].info["winner"]
         writer.add_scalar("P0_rewards", agents[0].rewards/obses_t[i].info["time_stamp"], epi_idx)
-        writer.add_scalar("P1_rewards", agents[1].rewards/obses_t[i].info["time_stamp"], epi_idx)
-        writer.add_scalar("Return_diff", agents[0].rewards - agents[1].rewards , epi_idx)
+        # writer.add_scalar("P1_rewards", agents[1].rewards/obses_t[i].info["time_stamp"], epi_idx)
+        # writer.add_scalar("Return_diff", agents[0].rewards - agents[1].rewards , epi_idx)
         writer.add_scalar("TimeStamp", obses_t[i].info["time_stamp"]  , epi_idx)
 
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
@@ -141,7 +141,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--env-id",
-        default="singleBattle-v0"
+        default="minigame-v0"
     )
     parser.add_argument(
         '--model-path', help='path of the model to be loaded',
@@ -191,7 +191,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--opponent',
-        default="socketAI"
+        default="Passive"
     )
     parser.add_argument(
         "--saving-prefix",

@@ -111,7 +111,7 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
         uva_dict[uva.unit.type].append(uva)
     # print(len(unit_valid_actions))
 
-    # st = time.time()
+    st = time.time()
     for key in uva_dict:
         states, units, _hxses = [], [], []
         if uva_dict[key]:
@@ -128,9 +128,9 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
             
             batch_dict[key] = (np.array(states), np.array(units), np.array(_hxses))
     # print(1, time.time() - st)
-
+    # input()
     
-    # st = time.time()
+    st = time.time()
     with torch.no_grad():
         for key in batch_dict:
             if batch_dict[key]:
@@ -145,7 +145,14 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
                 # elif mode == 'deterministic':
                 #     sampled_unit_action = model.deterministic_action_sampler(key, states, units)
                 actions = []
-                probs, hxs = model.actor_forward(key, states, units, _hxses.unsqueeze(0))
+                # st = time.time()
+
+                value, probs, hxs = model.forward(actor_type=key, 
+                                           spatial_feature=states,
+                                           unit_feature=units, 
+                                           hxs=_hxses.unsqueeze(0))
+                # print(1, time.time() - st)
+                # input()
                 # print(probs.shape, hxs.shape)
                 if mode == "stochastic":
                     # print(probs.requires_grad)
@@ -155,6 +162,7 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
                     
                     # print(state)
                     print(probs)
+                    print(value)
                     # print(m.entropy())
                     # input()
 
@@ -186,7 +194,7 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
                 # input()
 
         # print(2, time.time() - st)
-    
+        # input()
 
     return samples, hxses
 
@@ -243,9 +251,9 @@ def signal_wrapper(raw):
     # gs_wrapper = GsWrapper(**json.loads(raw.split('\n')[1]))
     # print(raw)
     # input()
-    observation = state_encoder_v4(gs_wrapper.gs, curr_player)
     ev = gs_wrapper.ev
     done = gs_wrapper.done
+    observation = state_encoder_v4(gs_wrapper.gs, curr_player, done)
     # self.game_time = gs_wrapper.gs.time
     info = {
         "unit_valid_actions": gs_wrapper.validActions,  # friends and their valid actions
@@ -728,7 +736,7 @@ def state_encoder_v2(gs: GameState, player):
     # input()
     return spatial_features
 
-def state_encoder_v4(gs:GameState, player):
+def state_encoder_v4(gs:GameState, player, done):
     """Plain encoder for network
     
     Arguments:
@@ -744,7 +752,6 @@ def state_encoder_v4(gs:GameState, player):
     p1_info, p2_info = gs.pgs.players
     my_resources  = p1_info.resources if current_player == p1_info.ID else p2_info.resources
     opp_resources = p2_info.resources if current_player == p1_info.ID else p1_info.resources
-
     # whether the box  walkable
     # channel_whether_walkable = np.zeros((2, h, w))
     cannot_walk = []
@@ -800,6 +807,11 @@ def state_encoder_v4(gs:GameState, player):
     channel_my_hp_ratio  = np.zeros((6, h, w))
     channel_opp_hp_ratio = np.zeros((6, h, w))
     # channel_action_trend = np.zeros((5 , h, w))
+    channel_who_am_i = np.zeros((2,h,w))
+    channel_who_am_i[current_player,:,:] = 1
+
+    channel_wheather_done = np.zeros((3,h,w))
+    channel_wheather_done[done] = 1
 
     id_location_map = {}
     for unit in units:
@@ -885,10 +897,12 @@ def state_encoder_v4(gs:GameState, player):
 
     spatial_features = np.vstack(
         (
+            channel_who_am_i, # 2
             channel_whether_walkable, # 2
             channel_whether_resource, #2
             channel_action_trend, #7
-            # 11
+            channel_wheather_done, # 3
+            # 16
 
             channel_my_cargo_size,
             channel_my_hp_ratio,
@@ -911,7 +925,8 @@ def state_encoder_v4(gs:GameState, player):
             channel_opp_range,
             channel_opp_resources,
             # 34
-            # total: 65
+
+            # total: 84
                                     
         ),
     )

@@ -28,6 +28,9 @@ class FrameBuffer:
         #     self._storage[self._next_idx] = frame
         # self._next_idx = (self._next_idx + 1) % self._maxsize
     def fetch(self):
+        return self._storage
+    
+    def flatten(self):
         return self._storage.reshape(-1, *self._shape[-2:])
 
 class Agent:
@@ -36,7 +39,7 @@ class Agent:
         self.steps = 0
         self.units_on_working = {}
         self._hidden_states = {} # id -> hidden_states
-        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=65)
+        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=79)
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
         self.smooth_sample_ratio = smooth_sample_ratio
@@ -51,7 +54,7 @@ class Agent:
         self._hidden_states.clear()
         # self._frame_buffer.refresh()
     
-    def reward_util(self,ev_s, ev_sp, start_at, end_at, punish_ratio=+.01):
+    def reward_util(self,ev_s, ev_sp, start_at, end_at,info, punish_ratio=-.0001):
         """duration rewards craft
         
         Arguments:
@@ -102,15 +105,20 @@ class Agent:
             mode = "eval"
         
         del kwargs
+        
+        # self._frame_buffer.push(obs)
+        # obs = self._frame_buffer.fetch()
 
-        if done == 2: # gameover state, should not sample actions, add transition by force
+        # obs = self._frame_buffer.flatten()
+
+        if mode=='train' and done == 2: # gameover state, should not sample actions, add transition by force
             # print( info['unit_valid_actions']) # []
             for _id in self.units_on_working:
                 callback(transitions={
                     "obs_t":self.units_on_working[_id][0],
                     "action":self.units_on_working[_id][1],
                     "obs_tp1":np.copy(obs),
-                    "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp),
+                    "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp,info=info),
                     # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
                     "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                     "done":done,
@@ -120,8 +128,6 @@ class Agent:
 
 
         sp_ac = sp_ac if sp_ac else self.brain
-        # self._frame_buffer.push(obs)
-        # obs = self._frame_buffer.fetch()
         # import torch
         # print(self.brain.critic_forward(torch.from_numpy(obs).float().unsqueeze(0)))
         # input()
@@ -152,6 +158,8 @@ class Agent:
 
         network_unit_actions = [(s[0].unit, get_action_index(s[1])) for s in samples]
 
+        # if self.smooth_sample_ratio
+
         if self.brain.recurrent:
             for i, s in enumerate(samples): # figure out the subject of the hxses:
                 self._hidden_states[str(s[0].unit.ID)] = hxses[:][i][:]
@@ -175,7 +183,7 @@ class Agent:
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
-                        "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp),
+                        "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp,info=info),
                         # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
@@ -194,14 +202,11 @@ class Agent:
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
                         # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
-                        "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp),
+                        "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp,info=info),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         "duration": time_stamp - self.units_on_working[_id][2],
-                        }  
-                    if done == 2:
-                        print(transition)      
-                        input()         
+                        }      
                     # print(reward)
                     # print(self.brain.critic_forward(torch.from_numpy(transition['obs_t']).float().unsqueeze(0)))
                     count += 1
