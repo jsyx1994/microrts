@@ -2,6 +2,10 @@
 from microrts.rts_wrapper.envs.utils import action_sampler_v2, get_action_index, action_sampler_v1,network_simulator
 from microrts.algo.replay_buffer import ReplayBuffer
 import numpy as np
+import torch
+from microrts.rts_wrapper.envs.datatypes import AGENT_ACTIONS_MAP
+import copy
+from microrts.rts_wrapper.envs.utils import unit_feature_encoder
 
 class FrameBuffer:
     def __init__(self, map_size, feature_size,size=8):
@@ -34,7 +38,7 @@ class FrameBuffer:
         return self._storage.reshape(-1, *self._shape[-2:])
 
 class Agent:
-    def __init__(self, model, memory_size=10000, random_rollout_steps=128, smooth_sample_ratio=None):
+    def __init__(self, model, memory_size=10000, random_rollout_steps=128, smooth_sample_ratio=None, map_size=(4,4)):
         self.rewards = 0
         self.steps = 0
         self.units_on_working = {}
@@ -43,7 +47,8 @@ class Agent:
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
         self.smooth_sample_ratio = smooth_sample_ratio
-        # self._memory = ReplayBuffer(memory_size)
+        self.memory = ReplayBuffer(memory_size)
+        self.map_size = map_size
 
         # self.last = []
 
@@ -54,7 +59,7 @@ class Agent:
         self._hidden_states.clear()
         # self._frame_buffer.refresh()
     
-    def reward_util(self,ev_s, ev_sp, start_at, end_at,info, punish_ratio=-.0001):
+    def reward_util(self,info, obs_tp1, ev_sp, end_at, punish_ratio=-.001):
         """duration rewards craft
         
         Arguments:
@@ -62,18 +67,59 @@ class Agent:
             end_at {[type]} -- [description]
         """
         # critical
+        obs_t, ua, start_at, ev_s, = info
+        # ua = info[1]
+        # ev_s = info[3]
+        # start_at = info[2]
+        # u_x, u_y = ua[0].x, ua[0].y
+        # ctf_obs = obs_tp1.copy()
+        # ctf_obs[:][u_x][u_y] = 0
+        # with torch.no_grad():
+        #     diff_r = self.brain.critic_forward(torch.from_numpy(ctf_obs).unsqueeze(0).float()) \
+        #         - self.brain.critic_forward(torch.from_numpy(obs_t).unsqueeze(0).float())
+        #     print(diff_r)
+            # input()
         reward = ev_sp - ev_s
+        # unit. = units_on_field[_id].x
         self.rewards += reward
-        return reward #+ punish_ratio * (end_at - start_at)
+        return reward # punish_ratio #+ punish_ratio * (end_at - start_at)
 
-    
+    def ctf_adv(self,info):
+        # return 0
+        obs_t, ua, start_at, ev_s, = info
+        obs_t = torch.from_numpy(obs_t).unsqueeze(0).float()
+        unit, act = ua
+        u_f = torch.from_numpy(unit_feature_encoder(unit,self.map_size)).unsqueeze(0).float()
+
+        with torch.no_grad():
+            v, p, _ = self.brain.forward( obs_t, u_f, unit.type)
+            # obs_act = copy.deepcopy(obs_t)
+            # obs_act[0,-7:,unit.x, unit.y][act] = 1 
+            # v = self.brain.critic_forward(obs_act)
+            # p, _ = self.brain.actor_forward(unit.type, obs_t, u_f)
+
+            u_x, u_y = unit.x, unit.y
+            # print(torch.eye(AGENT_ACTIONS_MAP[ua[0].type].__members__.items().__len__(), 7))
+            # input()
+            act_list = [i for i in torch.eye(AGENT_ACTIONS_MAP[unit.type].__members__.items().__len__(), 7)]
+            ctf_obs_li = []
+            for x in act_list:
+                obs_t[0,-7:,u_x,u_y] = x
+                ctf_obs_li.append(copy.deepcopy(obs_t))
+            
+            ctf_v = self.brain.critic_forward(torch.cat(ctf_obs_li))
+
+            adv = sum(p.squeeze() * ctf_v.squeeze()) 
+
+        return adv
+
     # def get_memory(self):
     #     return self._memory
     
     def sum_up(self,sp_ac=None, callback=None, **kwargs):
         self.think(sp_ac,callback, **kwargs)
 
-    def think(self,sp_ac=None, callback=None,way="stochastic",**kwargs):
+    def think(self,sp_ac=None, callback=None,way="stochastic", **kwargs):
         """figure out the action according to helper function and obs, store env related action to itself and \
             nn related result to Replay Buffer. More
         Arguments:
@@ -114,16 +160,21 @@ class Agent:
         if mode=='train' and done == 2: # gameover state, should not sample actions, add transition by force
             # print( info['unit_valid_actions']) # []
             for _id in self.units_on_working:
-                callback(transitions={
+                transitions ={
                     "obs_t":self.units_on_working[_id][0],
                     "action":self.units_on_working[_id][1],
                     "obs_tp1":np.copy(obs),
-                    "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp,info=info),
+                    "reward": self.reward_util(ev_sp=ev,obs_tp1=obs, end_at=time_stamp,info=self.units_on_working[_id]),
                     # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
                     "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                     "done":done,
                     "duration": time_stamp - self.units_on_working[_id][2],
-                })
+                    "adv": self.ctf_adv(self.units_on_working[_id]),
+
+                }
+                self.memory.push(**transitions)
+                if callback:
+                    callback(transitions)
             return []
 
 
@@ -176,19 +227,24 @@ class Agent:
             units_on_field = info["units_on_field"]
             key_to_del = []
             for _id in self.units_on_working:
-                if int(_id) not in units_on_field and callback:
+                if int(_id) not in units_on_field:
                     key_to_del.append(_id)
-                    callback(transitions=
-                    {
-                        "obs_t":self.units_on_working[_id][0],
-                        "action":self.units_on_working[_id][1],
-                        "obs_tp1":np.copy(obs),
-                        "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp,info=info),
-                        # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
-                        "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
-                        "done":done,
-                        "duration": time_stamp - self.units_on_working[_id][2],
-                    })
+                    transitions={
+                            "obs_t":self.units_on_working[_id][0],
+                            "action":self.units_on_working[_id][1],
+                            "obs_tp1":np.copy(obs),
+                            "reward": self.reward_util(ev_sp=ev,obs_tp1=obs, end_at=time_stamp,info=self.units_on_working[_id]),
+
+                            # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
+                            "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
+                            "done":done,
+                            "duration": time_stamp - self.units_on_working[_id][2],
+                            "adv": self.ctf_adv(self.units_on_working[_id]),
+
+                        }
+                    self.memory.push(**transitions)
+                    if callback:
+                        callback(transitions)
             for k in key_to_del:
                 del self.units_on_working[k]
 
@@ -197,15 +253,18 @@ class Agent:
                 if _id in self.units_on_working:
                     # print(reward, a)
                     # input()
+                    self.ctf_adv(self.units_on_working[_id])
                     transition = {
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
                         "obs_tp1":np.copy(obs),
                         # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
-                        "reward": self.reward_util(ev_s=self.units_on_working[_id][3], ev_sp=ev, start_at=self.units_on_working[_id][2], end_at=time_stamp,info=info),
+                        "reward": self.reward_util(ev_sp=ev,obs_tp1=obs, end_at=time_stamp,info=self.units_on_working[_id]),
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         "duration": time_stamp - self.units_on_working[_id][2],
+                        "adv": self.ctf_adv(self.units_on_working[_id]),
+
                         }      
                     # print(reward)
                     # print(self.brain.critic_forward(torch.from_numpy(transition['obs_t']).float().unsqueeze(0)))
@@ -216,9 +275,10 @@ class Agent:
                 # if transition:
                 #     self._memory.push(**transition)
                 #     transition.clear()
-                if transition and callback:
-                    callback(transitions=transition)
-                    # print(count)
+                if transition:
+                    self.memory.push(**transition)
+                    if callback:
+                        callback(transitions=transition)
                     count = 0
                     transition.clear()
         else:

@@ -3,25 +3,41 @@ import torch.nn as nn
 import torch.optim as optim
 from .replay_buffer import ReplayBuffer
 import scipy.signal
-# def discount_cumsum(rewards, discount):
-#     """
-#     magic from rllab for computing discounted cumulative sums of vectors.
-#     input: 
-#         vector x, 
-#         [x0, 
-#          x1, 
-#          x2]
-#     output:
-#         [x0 + discount * x1 + discount^2 * x2,  
-#          x1 + discount * x2,
-#          x2]
-#     """
-#     lrew = torch.squeeze(rewards).numpy()[::-1]
-#     for i in range(lrew.shape[0]):
-#         print(i)
-#         lrew[i] = discount * sum(lrew[i-1:i]) +lrew[i]
-    
-#     return torch.from_numpy(lrew[::-1]).unsqueeze(1)
+from torch.functional import F
+def discount_cumsum_(rewards, gamma, durations):
+    """
+    semi-MDP discounted cumsum
+    input: 
+        vector rewards, 
+        [x0, 
+         x1, 
+         x2]
+        
+        vector duration
+        [d0,
+         d1,
+         d2,
+        ]
+
+        scalar gamma
+        g
+    output:
+        [x0 * (g ** d0) + x1 * (g ** (d0 + d1)) + x2 * (g ** (d0 + d1 + d2)),
+         x1 * (g ** d1) + x2 * (g ** (d1 + d2))
+         x2 * (g ** d2)
+        ]
+    """
+    lrews = rewards.numpy()[::-1]
+    ld = durations.numpy()[::-1]
+    for i in range(len(lrews)):
+        discount = gamma ** ld[i]
+        lrews[i] = discount * (sum(lrews[i-1:i]) + lrews[i])
+
+    # lrew = torch.squeeze(rewards).numpy()[::-1]
+    # for i in range(lrew.shape[0]):
+    #     print(i)
+    #     lrew[i] = discount[i] * sum(lrew[i-1:i]) +lrew[i]
+    return torch.from_numpy(lrews[::-1])
 
 def discount_cumsum(x, discount):
     """
@@ -62,32 +78,42 @@ class A2C:
         self.value_loss_coef = value_loss_coef
         self.eps = eps
         self.log_interval = log_interval
-
+    
 
     def update(self, rollouts: ReplayBuffer, iter_idx, device="cpu", callback=None):
+        def compute_pi_loss():
+
+            pass
+
+        def compute_val_loss(self):
+            pass
+
         if rollouts.__len__() <= 0:
             return 
         sps_dict = rollouts.sample(batch_size='all')
         nn = self.actor_critic
         optimizer = self.optimizer
-        value_criteria= torch.nn.MSELoss()
 
         total_loss = 0
         total_rewards = 0
+
+        num_sps = 0
+        # for key in sps_dict:
+        #     if sps_dict[key]:
+        #         num_sps += len(sps_dict[key].actions)
+        # #         print(num_sps)
+        
+        # print(num_sps)
+        # input()
 
         for key in sps_dict:
             if key not in nn.activated_agents:
                 continue
 
             if sps_dict[key]:
-                states, units, actions, next_states, rewards, hxses, done_masks, durations = sps_dict[key].to(device)
-                # rets = discount_cumsum(rewards).unsqueeze
-                # loc = units[:-12]
-                # print(loc)
-                # input()
-                # print(durations)
-                # print(done_masks)
+                states, units, actions, next_states, rewards, hxses, done_masks, durations, advs = sps_dict[key].to(device)
                 # rets = discount_cumsum(rewards, self.gamma)
+                # rets = discount_cumsum_(rewards, self.gamma, durations)
                 if self.actor_critic.recurrent:
                     value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units,hxs=hxses.unsqueeze(0))
                 else:
@@ -105,9 +131,17 @@ class A2C:
 
                 # rewards = rewards + m.entropy().unsqueeze(0)
                 pi_sa = probs.gather(1, actions)
+                # pi_sa.retain_grad()
                 # rewards = (rewards - rewards.mean())/rewards.std()
-                targets = rewards - 0.0 * torch.log(pi_sa) + (self.gamma ** durations.unsqueeze(1)) * value_next * done_masks
-                advantages = targets - value.detach()
+                targets = rewards + (self.gamma ** durations) * ( value_next * done_masks)
+                # targets = rets
+                # for bat in states:
+
+
+                advantages = targets - advs
+
+                # advantages = rets - value
+                # advantages = rewards[:-1] + self.gamma ** durations * value[1:] - value.detach()
                 # adv = (advantages - advantages.mean()) / advantages.std()
                 # print(adv)
                 adv = advantages.detach()
@@ -115,11 +149,11 @@ class A2C:
                 # print(m.entropy())
                 # input()
                 entropy_loss = -entropy
-                policy_loss = -(torch.log(pi_sa + self.eps) * adv).mean()
+                policy_loss = -(torch.log(pi_sa) * adv).mean()
                 # print(len(rewards))
                 # input()
-                value_loss = value_criteria(value, targets)
-                # value_loss = value_criteria(value, rets)
+                value_loss = F.mse_loss(value, targets)
+                # value_loss = value_criteria(targets, rets * done_masks)
 
                 all_loss = policy_loss + value_loss * self.value_loss_coef + self.entropy_coef * entropy_loss
                 # print(len(actions))
@@ -141,7 +175,6 @@ class A2C:
             # "entropy_loss": entropy_loss,
             "all_losses":all_loss,
         }
-
         if iter_idx % self.log_interval == 0:
             if callback:
                 callback(iter_idx, results)

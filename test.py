@@ -94,8 +94,10 @@ def self_play(args):
             actions = []
             for i in range(len(players)):
                 if args.algo == 'ppo':
+                    # action = agents[i].think(sp_ac=algo.target_net,callback=None, obses=obses_t[i], accelerator=device, mode="train")
                     action = agents[i].think(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
                 elif args.algo == 'a2c':
+                    # action = agents[i].think(callback=None, obses=obses_t[i], accelerator=device, mode="train")
                     action = agents[i].think(callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
                 actions.append(action)
             obses_tp1 = env.step(actions)
@@ -104,8 +106,12 @@ def self_play(args):
                 for agent in agents:
                     if args.algo == 'ppo':
                         agents[i].sum_up(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+                        # agents[i].sum_up(sp_ac=algo.target_net,callback=None, obses=obses_tp1[i], accelerator=device, mode="train")
+                    
                     elif args.algo == 'a2c':
                         agents[i].sum_up(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+                        # agents[i].sum_up(callback=None, obses=obses_tp1[i], accelerator=device, mode="train")
+
                     agent.forget()
             # if len(memory) >= update_step:
             # # if step >= 5:
@@ -117,6 +123,7 @@ def self_play(args):
             # for i in range(len(players)):
             #     players_G0[i] += obses_tp1[i].reward
             obses_t = obses_tp1
+        # for ia in agents:
 
         algo.update(memory, iter_idx, device, logger)
         iter_idx += 1
@@ -141,7 +148,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--env-id",
-        default="minigame-v0"
+        default="attackHome-v0"
     )
     parser.add_argument(
         '--model-path', help='path of the model to be loaded',
@@ -203,6 +210,6 @@ if __name__ == '__main__':
     )
     args = parser.parse_args()
     print(args)
-    torch.manual_seed(32)
+    torch.manual_seed(34533333)
     self_play(args)
     # self_play(nn_path=os.path.join(settings.models_dir, "rl999.pth"))

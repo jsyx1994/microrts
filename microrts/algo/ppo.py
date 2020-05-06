@@ -50,7 +50,7 @@ class PPO:
                 continue
 
             if sps_dict[key]:
-                states, units, actions, next_states, rewards, hxses, done_masks = sps_dict[key].to(device)
+                states, units, actions, next_states, rewards, hxses, done_masks, durations, ctf_v = sps_dict[key].to(device)
                 if self.actor_critic.recurrent:
                     value_old, probs_old, _ = self.target_net.forward(actor_type=key,spatial_feature=states,unit_feature=units)
                     value, probs, _ = self.actor_critic.forward(actor_type=key,spatial_feature=states,unit_feature=units)
@@ -84,9 +84,10 @@ class PPO:
                 # print(rewards)
                 # print(torch.tanh(rewards))
                 # input()
-                targets = rewards -  .0 * log_pi_sa + self.gamma  * value_next * done_masks
+                targets = rewards -  .0 * log_pi_sa + self.gamma ** durations  * value_next * done_masks
+                
 
-                advantages = (targets - value_old).detach()
+                advantages = (targets - ctf_v).detach()
                 # print(m.entropy())
                 # input()
                 entropy_loss = -entropy
@@ -132,6 +133,6 @@ class PPO:
         #     self.target_net = copy.deepcopy(self.actor_critic)
         #     # self.target_net.parameters = 0.001 * self.actor_critic.parameters + 0.999 * self.target_net.parameters
         with torch.no_grad():
-            soft_update(self.target_net, self.actor_critic, tau=0.1)           
+            soft_update(self.target_net, self.actor_critic, tau=0.001)           
         rollouts.refresh()
 
