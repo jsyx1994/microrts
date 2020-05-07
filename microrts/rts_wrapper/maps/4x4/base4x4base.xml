@@ -7,9 +7,9 @@
     </rts.Player>
   </players>
   <units>
-    <rts.units.Unit type="Base" ID="20" player="0" x="0" y="0" resources="0" hitpoints="10" >
+    <rts.units.Unit type="Base" ID="26" player="0" x="0" y="0" resources="0" hitpoints="10" >
     </rts.units.Unit>
-    <rts.units.Unit type="Base" ID="21" player="1" x="3" y="3" resources="0" hitpoints="10" >
+    <rts.units.Unit type="Base" ID="27" player="1" x="3" y="3" resources="0" hitpoints="10" >
     </rts.units.Unit>
   </units>
 </rts.PhysicalGameState>

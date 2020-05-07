@@ -43,7 +43,7 @@ class Agent:
         self.steps = 0
         self.units_on_working = {}
         self._hidden_states = {} # id -> hidden_states
-        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=79)
+        self._frame_buffer = FrameBuffer(size=16,map_size=(4,4),feature_size=50)
         self.brain = model
         self.random_rollout_steps = random_rollout_steps
         self.smooth_sample_ratio = smooth_sample_ratio
@@ -85,7 +85,7 @@ class Agent:
         return reward # punish_ratio #+ punish_ratio * (end_at - start_at)
 
     def ctf_adv(self,info):
-        # return 0
+        return 0
         obs_t, ua, start_at, ev_s, = info
         obs_t = torch.from_numpy(obs_t).unsqueeze(0).float()
         unit, act = ua
@@ -153,7 +153,7 @@ class Agent:
         del kwargs
         
         # self._frame_buffer.push(obs)
-        # obs = self._frame_buffer.fetch()
+        # # obs = self._frame_buffer.fetch()
 
         # obs = self._frame_buffer.flatten()
 

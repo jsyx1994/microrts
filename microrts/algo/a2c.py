@@ -138,7 +138,7 @@ class A2C:
                 # for bat in states:
 
 
-                advantages = targets - advs
+                advantages = targets - value
 
                 # advantages = rets - value
                 # advantages = rewards[:-1] + self.gamma ** durations * value[1:] - value.detach()
