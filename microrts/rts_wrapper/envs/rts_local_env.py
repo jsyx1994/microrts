@@ -69,7 +69,7 @@ class BattleEnv(BaseEnv):
         import time
         for i in range(self.players_num):
             self.players[i].act(actions[i])
-            # time.sleep(.1)
+            # time.sleep(.1)  
 
         signals_res = [self._obs2dataclass(player.observe()) for player in self.players]
         return signals_res

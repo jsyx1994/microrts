@@ -198,7 +198,7 @@ if __name__ == '__main__':
     )
     parser.add_argument(
         '--opponent',
-        default="Passive"
+        default="socketAI"
     )
     parser.add_argument(
         "--saving-prefix",

@@ -10,8 +10,16 @@ from microrts.algo.agents import Agent
 from .utils import get_config
 import time
 
-def make_env(env_id):
+def make_env(env_id, opponent="socketAI"):
+    """multi process settings
+
+    Arguments:
+        env_id {[str} -- env
+        opponent {str} -- the ai2 type
+    """
     def _thunk():
+        config = get_config(env_id)
+        config.ai2_type = opponent
         env = gym.make(env_id)
         # print(env.players[0].brain is env.players[1].brain)
         return env
@@ -19,10 +27,16 @@ def make_env(env_id):
     return _thunk
 
 
-def make_vec_envs(env_id, num_processes, context, model,smooth_raitio=0):
+def make_vec_envs(env_id, num_processes, context, model,league,smooth_raitio=0, ):
     
     assert num_processes > 0, "Can not make no env!"
-    envs = [make_env(env_id) for i in range(num_processes)]
+    assert len(league) <= num_processes, "league number overflow!"
+    print(len(league), num_processes)
+    input()
+    envs = []
+    for i in range(num_processes):
+        envs.append(make_env(env_id, league[i]))
+    # envs = [make_env(env_id,) for i in range(num_processes)]
 
     # print(envs[0]().players[0].brain is envs[1]().players[0].brain)
     # env1 = envs[0]().players[0].brain
@@ -30,9 +44,11 @@ def make_vec_envs(env_id, num_processes, context, model,smooth_raitio=0):
     
     # input()
     config = get_config(env_id)
-    nagents = 2 if (config.ai1_type == "socketAI" and config.ai2_type == "socketAI") else 1
+    # nagents = 2 if (config.ai1_type == "socketAI" and config.ai2_type == "socketAI") else 1
+    nagents = [2 if league[i]=='socketAI' else 1 for i in range(num_processes)]
 
-    agents = [[Agent(model,smooth_sample_ratio=smooth_raitio) for _ in range(nagents)] for _ in range(num_processes)]
+
+    agents = [[Agent(model,smooth_sample_ratio=smooth_raitio) for _ in range(nagents[i])] for i in range(num_processes)]
 
 
     envs = ParallelVecEnv(envs, context=context)

@@ -28,12 +28,12 @@ def play(args):
         for k in results:
             writer.add_scalar(k, results[k], iter_idx)
 
-    def memo_inserter(buffer:ReplayBuffer,transitions):
-        # nonlocal T
-        # T += 1
+    def memo_inserter(transitions):
+        nonlocal T
+        T += 1
         # if transitions['reward'] < 0:
         # print(transitions['reward'])
-        buffer.push(**transitions)
+        memory.push(**transitions)
 
 
     nn_path = args.model_path
@@ -46,7 +46,7 @@ def play(args):
     map_size = config.height, config.width
     # max_episodes = args.episodes
 
-    # memory = ReplayBuffer(10000)
+    memory = ReplayBuffer(10000)
 
     if start_from_scratch:
         nn = ActorCritic(map_size)
@@ -60,15 +60,25 @@ def play(args):
     # input()
     nn.to(device)
     num_process = args.num_process
+    league = ['socketAI' for _ in range(num_process)]
+    cmd_league  =args.league.split(',')
+    if num_process < len(cmd_league):
+        print('The league input is larger than the number of process, will not use league learning')
+    else:
+        print("league learning staring")
+        for i, x in enumerate(cmd_league):
+            print(x)
+            league[i] = x
+    print('All leagues participated are', league)
 
-    envs, agents = make_vec_envs(args.env_id, num_process, "fork", nn)
+    envs, agents = make_vec_envs(args.env_id, num_process, "fork", nn, league=league)
     buffers = [ReplayBuffer(config.max_cycles + 100) for _ in range(len(agents))]
     import time
     frames = 0
     st = time.time()
     obses_n = envs.reset()
-    # update_steps = 32
-    # T = 1
+    update_steps = 32
+    T = 1
     if args.algo == "a2c":
         algo = A2C(
             ac_model=nn,
@@ -98,35 +108,42 @@ def play(args):
         for i in range(num_process):
             action_i = []
             for j in range(len(obses_n[i])):
+                if T % (update_steps * num_process) == 0:
+                    T = 1
+                    # print('Update...')
+                    # input() 
+                    algo.update(memory, iter_idx, callback=logger, device=device)
+                    iter_idx += 1
+
                 if not obses_n[i][j].done:
                     if args.algo == 'ppo':
-                        action = agents[i][j].think(sp_ac=algo.target_net,callback=partial(memo_inserter, buffer=buffers[i]), obses=obses_n[i][j], accelerator=device, mode="train")
+                        action = agents[i][j].think(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     elif args.algo == 'a2c':
-                        action = agents[i][j].think(callback=partial(memo_inserter, buffer=buffers[i]), obses=obses_n[i][j], accelerator=device, mode="train")
+                        action = agents[i][j].think(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                 else:
                     action = [] # reset
                     epi_idx += .5
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
                     writer.add_scalar("rewards", agents[i][j].rewards / (obses_n[i][j].info["time_stamp"]), epi_idx)
                     if args.algo == 'ppo':
-                        agents[i][j].sum_up(sp_ac=algo.target_net,callback=partial(memo_inserter, buffer=buffers[i]), obses=obses_n[i][j], accelerator=device, mode="train")
+                        agents[i][j].sum_up(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     elif args.algo == 'a2c':
-                        agents[i][j].sum_up(callback=partial(memo_inserter, buffer=buffers[i]), obses=obses_n[i][j], accelerator=device, mode="train")
+                        agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     # buffers[i]
                     agents[i][j].forget()
                 action_i.append(action)
                 if (epi_idx + 1) % 100 == 0:
                     torch.save(nn.state_dict(), os.path.join(settings.models_dir, args.saving_prefix + str(int(epi_idx)) + ".pth"))
             
-            if obses_n[i][0].done:
-                print(len(buffers[i]))
-                algo.update(buffers[i], iter_idx, callback=logger, device=device)
-                # if T % (update_steps * num_process) == 0:
-                #     T = 1
-                #     # print('Update...')
-                #     # input() 
-                #     algo.update(memory, iter_idx, callback=logger, device=device)
-                #     iter_idx += 1
+            # if obses_n[i][0].done:
+            #     print(len(buffers[i]))
+            #     algo.update(buffers[i], iter_idx, callback=logger, device=device)
+            #     if T % (update_steps * num_process) == 0:
+            #         T = 1
+            #         # print('Update...')
+            #         # input() 
+            #         algo.update(memory, iter_idx, callback=logger, device=device)
+            #         iter_idx += 1
 
 
             actions_n.append(action_i)
@@ -217,8 +234,13 @@ if __name__ == "__main__":
         "--algo",
         default='ppo',
     )
+    parser.add_argument(
+        "--league",
+        default='WorkerRush,Random',
+    )
     args = parser.parse_args()
-    print(args)
+    print(args.league)
+    # input()
     torch.manual_seed(0)
     play(args) #, nn_path=os.path.join(settings.models_dir,"rl39699.pth"))
 

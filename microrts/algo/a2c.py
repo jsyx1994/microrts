@@ -111,7 +111,7 @@ class A2C:
                 continue
 
             if sps_dict[key]:
-                states, units, actions, next_states, rewards, hxses, done_masks, durations, advs = sps_dict[key].to(device)
+                states, units, actions, next_states, rewards, hxses, done_masks, durations, ctf = sps_dict[key].to(device)
                 # rets = discount_cumsum(rewards, self.gamma)
                 # rets = discount_cumsum_(rewards, self.gamma, durations)
                 if self.actor_critic.recurrent:
@@ -123,7 +123,7 @@ class A2C:
                 # print(probs.is_leaf)
                 # input()
                 # entropy = - (probs * torch.log(probs)).mean(dim=1)
-                entropy = - (probs * torch.log(probs)).mean()
+                entropy = - (probs * torch.log(probs)).sum()
 
                 value_next = nn.critic_forward(next_states).detach()
                 # probs_next, _ = nn.actor_forward(actor_type=key,spatial_feature=states,unit_feature=units)
@@ -138,7 +138,7 @@ class A2C:
                 # for bat in states:
 
 
-                advantages = targets - value
+                advantages = targets - ctf
 
                 # advantages = rets - value
                 # advantages = rewards[:-1] + self.gamma ** durations * value[1:] - value.detach()
@@ -148,7 +148,7 @@ class A2C:
                 # print(adv)
                 # print(m.entropy())
                 # input()
-                entropy_loss = -entropy
+                entropy_loss = -entropy.mean()
                 policy_loss = -(torch.log(pi_sa) * adv).mean()
                 # print(len(rewards))
                 # input()

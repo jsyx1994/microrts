@@ -84,12 +84,12 @@ class Agent:
         self.rewards += reward
         return reward # punish_ratio #+ punish_ratio * (end_at - start_at)
 
-    def ctf_adv(self,info):
-        return 0
+    def ctf_adv(self,info,device):
+        # return 0
         obs_t, ua, start_at, ev_s, = info
-        obs_t = torch.from_numpy(obs_t).unsqueeze(0).float()
+        obs_t = torch.from_numpy(obs_t).unsqueeze(0).float().to(device)
         unit, act = ua
-        u_f = torch.from_numpy(unit_feature_encoder(unit,self.map_size)).unsqueeze(0).float()
+        u_f = torch.from_numpy(unit_feature_encoder(unit,self.map_size)).unsqueeze(0).float().to(device)
 
         with torch.no_grad():
             v, p, _ = self.brain.forward( obs_t, u_f, unit.type)
@@ -157,7 +157,7 @@ class Agent:
 
         # obs = self._frame_buffer.flatten()
 
-        if mode=='train' and done == 2: # gameover state, should not sample actions, add transition by force
+        if mode=='train' and done == 2: # gameover timeup state, should not sample actions, add transition by force
             # print( info['unit_valid_actions']) # []
             for _id in self.units_on_working:
                 transitions ={
@@ -169,10 +169,10 @@ class Agent:
                     "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                     "done":done,
                     "duration": time_stamp - self.units_on_working[_id][2],
-                    "adv": self.ctf_adv(self.units_on_working[_id]),
+                    "adv": self.ctf_adv(self.units_on_working[_id],device),
 
                 }
-                self.memory.push(**transitions)
+                # self.memory.push(**transitions)
                 if callback:
                     callback(transitions)
             return []
@@ -239,10 +239,10 @@ class Agent:
                             "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                             "done":done,
                             "duration": time_stamp - self.units_on_working[_id][2],
-                            "adv": self.ctf_adv(self.units_on_working[_id]),
+                            "adv": self.ctf_adv(self.units_on_working[_id],device),
 
                         }
-                    self.memory.push(**transitions)
+                    # self.memory.push(**transitions)
                     if callback:
                         callback(transitions)
             for k in key_to_del:
@@ -263,7 +263,7 @@ class Agent:
                         "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
                         "done":done,
                         "duration": time_stamp - self.units_on_working[_id][2],
-                        "adv": self.ctf_adv(self.units_on_working[_id]),
+                        "adv": self.ctf_adv(self.units_on_working[_id],device),
 
                         }      
                     # print(reward)
@@ -276,7 +276,7 @@ class Agent:
                 #     self._memory.push(**transition)
                 #     transition.clear()
                 if transition:
-                    self.memory.push(**transition)
+                    # self.memory.push(**transition)
                     if callback:
                         callback(transitions=transition)
                     count = 0

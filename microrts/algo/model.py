@@ -119,14 +119,46 @@ class ScaledDotProductAttention(nn.Module):
         return output, attn
 
 class NNBase(nn.Module):
-    def __init__(self, out_size):
+    def __init__(self, map_size:list, input_channel, hidden_size, out_size):
         super(NNBase, self).__init__()
+        init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
+                               constant_(x, 0), nn.init.calculate_gain('relu'))
+        self.conv = nn.Sequential(
+            init_(nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=1)), #nn.ReLU(),
+            # nn.BatchNorm2d(64), nn.ReLU(),
+            init_(nn.Conv2d(64, 32, 1)), #nn.ReLU(),
+            # nn.BatchNorm2d(32), nn.ReLU(),
+            init_(nn.Conv2d(32, out_size, 1)),# nn.ReLU(),
+            # nn.BatchNorm2d(self.conv_out_size), nn.ReLU(),
+
+            # nn.BatchNorm2d(16,affine=False), nn.ReLU(),
+            # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+            # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
+            # nn.Conv2d(64, 32, 2), nn.ReLU(),
+            nn.AdaptiveMaxPool2d(map_size),  # n * 64 * map_height * map_width
+            Flatten(),
+            # nn.LayerNorm(self.conv_flatten_size)
+        )
+    
+    def forward(self, sp_feature):
+        x = self.conv(sp_feature)
+        return x
+
 
     def common_func1(self):
         pass
 
     def common_func2(self):
         pass
+
+class Actor(nn.Module):
+    def __init__(self):
+        super(Actor,self).__init__()
+    
+class Critic(nn.Module):
+    def __init__(self, map_size, input_channel, hidden_size):
+        super(Critic,self).__init__()
+        self.common = NNBase(map_size, input_channel, hidden_size, out_size=hidden_size)
 
 
 class ActorCritic(nn.Module):
@@ -170,22 +202,33 @@ class ActorCritic(nn.Module):
 
         init_ = lambda m: init(m, nn.init.orthogonal_, lambda x: nn.init.
                                constant_(x, 0), nn.init.calculate_gain('relu'))
-        self.shared_conv = nn.Sequential(
-            init_(nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=1)), #nn.ReLU(),
-            # nn.BatchNorm2d(64), nn.ReLU(),
-            init_(nn.Conv2d(64, 32, 1)), #nn.ReLU(),
-            # nn.BatchNorm2d(32), nn.ReLU(),
-            init_(nn.Conv2d(32, self.conv_out_size, 1)),# nn.ReLU(),
-            # nn.BatchNorm2d(self.conv_out_size), nn.ReLU(),
+        self.critic_conv = NNBase(map_size,input_channel,hidden_size,self.conv_out_size)
 
-            # nn.BatchNorm2d(16,affine=False), nn.ReLU(),
-            # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
-            # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
-            # nn.Conv2d(64, 32, 2), nn.ReLU(),
-            nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
-            Flatten(),
-            # nn.LayerNorm(self.conv_flatten_size)
-        )
+        # self.actor_conv  = nn.ModuleDict({
+        #     UNIT_TYPE_NAME_WORKER: NNBase(map_size,input_channel,hidden_size,self.conv_out_size),
+        #     UNIT_TYPE_NAME_BASE: NNBase(map_size,input_channel,hidden_size,self.conv_out_size),
+        #     UNIT_TYPE_NAME_LIGHT:NNBase(map_size,input_channel,hidden_size,self.conv_out_size),
+        #     UNIT_TYPE_NAME_BARRACKS: NNBase(map_size,input_channel,hidden_size,self.conv_out_size),
+        #     UNIT_TYPE_NAME_HEAVY: NNBase(map_size,input_channel,hidden_size,self.conv_out_size)
+        # })
+        self.actor_conv = NNBase(map_size,input_channel,hidden_size,self.conv_out_size)
+
+        # self.shared_conv = nn.Sequential(
+        #     init_(nn.Conv2d(in_channels=input_channel, out_channels=64, kernel_size=1)), #nn.ReLU(),
+        #     # nn.BatchNorm2d(64), nn.ReLU(),
+        #     init_(nn.Conv2d(64, 32, 1)), #nn.ReLU(),
+        #     # nn.BatchNorm2d(32), nn.ReLU(),
+        #     init_(nn.Conv2d(32, self.conv_out_size, 1)),# nn.ReLU(),
+        #     # nn.BatchNorm2d(self.conv_out_size), nn.ReLU(),
+
+        #     # nn.BatchNorm2d(16,affine=False), nn.ReLU(),
+        #     # init_(nn.Conv2d(32, 16, 1)), nn.ReLU(),
+        #     # init_(nn.Conv2d(64, 32, 2)), nn.ReLU(),
+        #     # nn.Conv2d(64, 32, 2), nn.ReLU(),
+        #     nn.AdaptiveMaxPool2d((map_height, map_width)),  # n * 64 * map_height * map_width
+        #     Flatten(),
+        #     # nn.LayerNorm(self.conv_flatten_size)
+        # )
 
         # self.self_attn = nn.Sequential(
         #     Pic2Vector(),
@@ -268,6 +311,8 @@ class ActorCritic(nn.Module):
         self.actor_out = nn.ModuleDict({
             UNIT_TYPE_NAME_WORKER: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(self.conv_flatten_size + unit_feature_size, hidden_size)), nn.ReLU(),
+
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 # nn.BatchNorm1d(hidden_size), nn.ReLU(),
@@ -280,6 +325,8 @@ class ActorCritic(nn.Module):
             ),
             UNIT_TYPE_NAME_BASE: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(self.conv_flatten_size + unit_feature_size, hidden_size)), nn.ReLU(),
+
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 # nn.BatchNorm1d(hidden_size), nn.ReLU(),
@@ -292,6 +339,8 @@ class ActorCritic(nn.Module):
             ),
             UNIT_TYPE_NAME_LIGHT: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(self.conv_flatten_size + unit_feature_size, hidden_size)), nn.ReLU(),
+
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 # nn.BatchNorm1d(hidden_size), nn.ReLU(),
@@ -304,6 +353,8 @@ class ActorCritic(nn.Module):
             ),
             UNIT_TYPE_NAME_BARRACKS: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(self.conv_flatten_size + unit_feature_size, hidden_size)), nn.ReLU(),
+
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 # nn.BatchNorm1d(hidden_size), nn.ReLU(),
@@ -315,6 +366,8 @@ class ActorCritic(nn.Module):
             ),
             UNIT_TYPE_NAME_HEAVY: nn.Sequential(
                 # init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+                init_(nn.Linear(self.conv_flatten_size + unit_feature_size, hidden_size)), nn.ReLU(),
+
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
                 # nn.BatchNorm1d(hidden_size), nn.ReLU(),
@@ -332,44 +385,47 @@ class ActorCritic(nn.Module):
         pi, hxs_n = self.actor_forward(actor_type, spatial_feature, unit_feature, hxs)
         return value, pi, hxs_n
 
-    def _shared_forward(self, spatial_feature):
-        x = self.shared_conv(spatial_feature)
-        # print(x.shape)
-        # input()
-        # x = self.p2v(x)
-        # x, _ = self.self_attn(x,x,x)
-        # x = Flatten()(x)
-        # x = self.shared_linear(x)
-        # x = self.layer_norm(x)
+    # def _shared_forward(self, spatial_feature):
+    #     x = self.shared_conv(spatial_feature)
+    #     # print(x.shape)
+    #     # input()
+    #     # x = self.p2v(x)
+    #     # x, _ = self.self_attn(x,x,x)
+    #     # x = Flatten()(x)
+    #     # x = self.shared_linear(x)
+    #     # x = self.layer_norm(x)
 
-        # print(x.shape)
-        # input()
-        return x
+    #     # print(x.shape)
+    #     # input()
+    #     return x
 
     def evaluate(self, spatial_feature: Tensor):
         self.eval()
-        x = self._shared_forward(spatial_feature)
+        x = self.critic_conv(spatial_feature)
         x = self.critic_mlps(x)
         x = self.critic_out(x)
         return x
 
     def critic_forward(self, spatial_feature: Tensor):
-        x = self._shared_forward(spatial_feature)
+        # x = self._shared_forward(spatial_feature)
+        x = self.critic_conv(spatial_feature)
         x = self.critic_mlps(x)
         x = self.critic_out(x)
         return x
 
     def actor_forward(self, actor_type: str, spatial_feature: Tensor, unit_feature: Tensor, hxses:Tensor=None):
         hxs = None
-        x = self._shared_forward(spatial_feature)
+        # x = self.actor_conv[actor_type](spatial_feature)
+        x = self.actor_conv(spatial_feature)
+
         # x = self.shared_to_actor(x)
-        # x = x.detach()
+        # x = x.detach() 
 
 
         x = torch.cat([x, unit_feature], dim=1)
         # print(x.size())
         # input()
-        x = self.actor_mlps(x)
+        # x = self.actor_mlps(x)
         if self.recurrent:
             x, hxs = self.gru(x.unsqueeze(0), hxses)
             x = x.squeeze(0)
@@ -414,10 +470,6 @@ class ActorCritic(nn.Module):
         idx = m.sample().item()
         action = list(AGENT_ACTIONS_MAP[actor_type])[idx]
         return action
-    
-    def ctf_value(self, actor_type: str, states: Tensor, unit_feature: Tensor, actions):
-        
-        pass
 
 
 

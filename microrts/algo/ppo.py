@@ -66,7 +66,7 @@ class PPO:
                     value, probs, _ = self.actor_critic.forward(actor_type=key,spatial_feature=states,unit_feature=units)
                 # m = torch.distributions.Categorical(probs=probs)
 
-                entropy = - (probs * torch.log(probs)).mean()
+                entropy = - (probs * torch.log(probs)).sum()
                 value_next = self.target_net.critic_forward(next_states).detach()
                 # value_next = self.actor_critic.critic_forward(next_states).detach()
 
@@ -90,7 +90,7 @@ class PPO:
                 advantages = (targets - ctf_v).detach()
                 # print(m.entropy())
                 # input()
-                entropy_loss = -entropy
+                entropy_loss = -entropy.mean()
                 ratio = pi_sa / pi_sa_old
                 clip_ratio = 0.2
                 clip_adv = torch.clamp(ratio, 1-clip_ratio, 1+clip_ratio) * advantages
