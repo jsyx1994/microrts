@@ -253,7 +253,7 @@ class Agent:
                 if _id in self.units_on_working:
                     # print(reward, a)
                     # input()
-                    self.ctf_adv(self.units_on_working[_id])
+                    # self.ctf_adv(self.units_on_working[_id])
                     transition = {
                         "obs_t":self.units_on_working[_id][0],
                         "action":self.units_on_working[_id][1],
