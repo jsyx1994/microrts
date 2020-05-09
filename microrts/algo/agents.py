@@ -111,7 +111,7 @@ class Agent:
 
             adv = sum(p.squeeze() * ctf_v.squeeze()) 
 
-        return adv
+        return float(adv)
 
     # def get_memory(self):
     #     return self._memory
