@@ -15,6 +15,25 @@ import os
 import argparse
 from functools import partial
 
+# AI added in league combat
+    # private static AI getAIType(String type, UnitTypeTable utt){
+    #     switch (type){
+    #         case "WorkerRush"   : return new WorkerRush(utt);
+    #         case "Random"       : return new RandomAI();
+    #         case "RandomBiased" : return new RandomBiasedAI(utt);
+    #         case "NaiveMCTS"    : return new NaiveMCTS(utt);
+    #         case "MC"           : return new MonteCarlo(utt);
+    #         case "UCT"          : return new UCT(utt);
+    #         case "ABCD"         : return new ABCD(utt);
+    #         case "MCTS"         : return new MLPSMCTS(utt);
+    #         case "WorkerDefense": return new WorkerDefense(utt);
+    #         case "LightRush"    : return new LightRush(utt);
+    #         case "WorkerRushPP" : return new WorkerRushPlusPlus(utt);
+    #         case "PortfolioAI"  : return new PortfolioAI(utt);
+    #         case "SCV"          : return new SCV(utt);
+    #         default             : return new PassiveAI();
+    #     }
+    # }
 def get_config(env_id) -> Config :
         from microrts.rts_wrapper import environments
         for registered in environments:
@@ -236,7 +255,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--league",
-        default='WorkerRush,Random',
+        default='socketAI',
     )
     args = parser.parse_args()
     print(args.league)
