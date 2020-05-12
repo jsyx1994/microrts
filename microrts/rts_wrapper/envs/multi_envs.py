@@ -32,7 +32,7 @@ def make_vec_envs(env_id, num_processes, context, model,league,smooth_raitio=0, 
     assert num_processes > 0, "Can not make no env!"
     assert len(league) <= num_processes, "league number overflow!"
     print(len(league), num_processes)
-    input()
+    # input()
     envs = []
     for i in range(num_processes):
         envs.append(make_env(env_id, league[i]))

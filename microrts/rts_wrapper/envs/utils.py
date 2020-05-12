@@ -104,10 +104,10 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
     # Categorize valid units need sampling
     for uva in unit_valid_actions:
         _type = uva.unit.type
-        # if _type == UNIT_TYPE_NAME_BASE and info["resources"] <= 0:
-        #     continue
-        # if _type == UNIT_TYPE_NAME_BARRACKS and info["resources"] <= 1: # resource less than the lowest cost of production
-        #     continue
+        if _type == UNIT_TYPE_NAME_BASE and info["resources"] <= 0:
+            continue
+        if _type == UNIT_TYPE_NAME_BARRACKS and info["resources"] <= 1: # resource less than the lowest cost of production
+            continue
         uva_dict[uva.unit.type].append(uva)
     # print(len(unit_valid_actions))
 
@@ -252,6 +252,7 @@ def signal_wrapper(raw):
     # print(raw)
     # input()
     ev = gs_wrapper.ev
+    reward = gs_wrapper.reward
     done = gs_wrapper.done
     observation = state_encoder_v3(gs_wrapper.gs, curr_player)
     # self.game_time = gs_wrapper.gs.time
@@ -267,7 +268,7 @@ def signal_wrapper(raw):
         "map_size": [gs_wrapper.gs.pgs.height, gs_wrapper.gs.pgs.width],
         "time_stamp": int(gs_wrapper.gs.time),
     }
-    return observation, ev, done, info
+    return observation, reward, done, info
 
 
 def network_simulator(info, **args):

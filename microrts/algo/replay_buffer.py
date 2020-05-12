@@ -22,7 +22,8 @@ class Transition:
     hxs     : np.array
     done    : bool
     duration: float
-    adv     : np.array
+    ctf     : np.array
+    irew    : np.array
 
 @dataclass
 class Batches:
@@ -34,7 +35,8 @@ class Batches:
     hxses: np.array
     done: np.array
     durations: np.array
-    advs: np.array
+    ctfs: np.array
+    irews: np.array
     def to(self,device):
         done_masks = torch.FloatTensor(
                     [0.0 if _done==1  else 1.0 for _done in self.done]
@@ -48,7 +50,8 @@ class Batches:
                 torch.from_numpy(self.hxses).float().to(device) if self.hxses.all() else self.hxses, \
                 done_masks.to(device).unsqueeze(1), \
                 torch.from_numpy(self.durations).float().to(device).unsqueeze(1), \
-                torch.from_numpy(self.advs).float().to(device).unsqueeze(1),\
+                torch.from_numpy(self.ctfs).float().to(device).unsqueeze(1),\
+                torch.from_numpy(self.irews).float().to(device).unsqueeze(1),\
                 # torch.from_numpy(self.done).int().to(device).unsqueeze(1)
                 
 
@@ -123,12 +126,13 @@ class ReplayBuffer(object):
         # print(idxes)
         unit_types, states, units, actions, next_states, rewards, hxses, done_masks = [], [], [], [], [], [],[], []
         durations = []
-        advs = []
+        ctfs = []
+        irews = []
 
         for i in idxes:
             transition = self._storage[i]
             
-            state, unit_action, next_state, reward,hxs, done, duration, adv = transition.__dict__.values()
+            state, unit_action, next_state, reward,hxs, done, duration, ctf, irew = transition.__dict__.values()
             map_size = state.shape[-2:]
 
             u, a = unit_action
@@ -144,7 +148,8 @@ class ReplayBuffer(object):
             rewards.append(reward)
             done_masks.append(done)
             durations.append(duration)
-            advs.append(adv)
+            ctfs.append(ctf)
+            irews.append(irew)
             
             # for u, a in unit_actions:
             #     unit_types.append(u.type)
@@ -170,7 +175,8 @@ class ReplayBuffer(object):
                 np.array(hxses),        \
                 np.array(done_masks),   \
                 np.array(durations),    \
-                np.array(advs),         \
+                np.array(ctfs),         \
+                np.array(irews),        \
 
 
     def sample(self, batch_size):
@@ -206,7 +212,7 @@ class ReplayBuffer(object):
                 UNIT_TYPE_NAME_HEAVY:       [],
                 UNIT_TYPE_NAME_RANGED:      [],
         }
-        unit_types, states, units, actions, next_states, rewards,hxses, done_masks, durations, advs = batch
+        unit_types, states, units, actions, next_states, rewards,hxses, done_masks, durations, ctfs, irews = batch
         for i in range(batch_size):
             ans[unit_types[i]].append((
                 states[i],
@@ -217,13 +223,15 @@ class ReplayBuffer(object):
                 hxses[i],
                 done_masks[i],
                 durations[i],
-                advs[i],
+                ctfs[i],
+                irews[i],
                 ))
         
         for key in ans:
             states, units, actions, next_states, rewards,hxses, done_masks = [], [], [], [], [], [], []
             durations = []
-            advs = []
+            ctfs = []
+            irews= []
             if ans[key]:
                 for v in ans[key]:
                     states.append(v[0])
@@ -234,7 +242,8 @@ class ReplayBuffer(object):
                     hxses.append(v[5])
                     done_masks.append(v[6])
                     durations.append(v[7])
-                    advs.append(v[8])
+                    ctfs.append(v[8])
+                    irews.append(v[9])
                 
                 temp = {
                     "states" : np.array(states),
@@ -245,7 +254,8 @@ class ReplayBuffer(object):
                     "hxses":np.array(hxses),
                     "done":  np.array(done_masks),
                     "durations": np.array(durations),
-                    "advs":np.array(advs),
+                    "ctfs":np.array(ctfs),
+                    "irews":np.array(irews),
                 }
                 ans[key] = Batches(**temp)
         return ans

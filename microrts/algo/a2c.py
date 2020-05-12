@@ -4,6 +4,7 @@ import torch.optim as optim
 from .replay_buffer import ReplayBuffer
 import scipy.signal
 from torch.functional import F
+import numpy as np
 def discount_cumsum_(rewards, gamma, durations):
     """
     semi-MDP discounted cumsum
@@ -111,7 +112,7 @@ class A2C:
                 continue
 
             if sps_dict[key]:
-                states, units, actions, next_states, rewards, hxses, done_masks, durations, ctf = sps_dict[key].to(device)
+                states, units, actions, next_states, rewards, hxses, done_masks, durations, ctfs, irews = sps_dict[key].to(device)
                 # rets = discount_cumsum(rewards, self.gamma)
                 # rets = discount_cumsum_(rewards, self.gamma, durations)
                 if self.actor_critic.recurrent:
@@ -136,9 +137,15 @@ class A2C:
                 targets = rewards + (self.gamma ** durations) * ( value_next * done_masks)
                 # targets = rets
                 # for bat in states:
-
-
-                advantages = targets - ctf
+                # ratio = []
+                # for i in range(len(rewards)):
+                #     if rewards[i] == 0:
+                #         ratio.append([1])
+                #     else:
+                #         ratio.append([irews[i]/rewards[i]])
+                # ratio = torch.Tensor(ratio)
+                # print(ratio)
+                advantages = targets - value
 
                 # advantages = rets - value
                 # advantages = rewards[:-1] + self.gamma ** durations * value[1:] - value.detach()

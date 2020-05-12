@@ -24,8 +24,8 @@ def self_play(args):
             writer.add_scalar(k, results[k], iter_idx)
 
     def memo_inserter(transitions):
-        if transitions['reward'] > 0:
-            print(transitions['reward'])
+        # if transitions['reward'] > 0:
+        #     print(transitions['reward'])
         # if transitions['done'] == 2:
         #     print(transitions['done'])
         #     input()

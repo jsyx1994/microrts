@@ -255,7 +255,30 @@ class ActorCritic(nn.Module):
         #     # init_(nn.Linear(128, self.shared_out_size)), nn.ReLU(),
         # )
 
-
+        # self.critic  = nn.ModuleDict({
+        #     UNIT_TYPE_NAME_WORKER: nn.Sequential(
+        #     init_(nn.Linear(self.conv_flatten_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, 1)),
+        # ),
+        #     UNIT_TYPE_NAME_BASE: nn.Sequential(
+        #     init_(nn.Linear(self.conv_flatten_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, 1)),
+        # ),
+        #     UNIT_TYPE_NAME_LIGHT:nn.Sequential(
+        #     init_(nn.Linear(self.conv_flatten_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, hidden_size)), nn.ReLU(),
+        #     init_(nn.Linear(hidden_size, 1)),,
+        #     # UNIT_TYPE_NAME_BARRACKS: ,
+        #     # UNIT_TYPE_NAME_HEAVY: 
+        # })
         self.critic_mlps = nn.Sequential(
             init_(nn.Linear(self.conv_flatten_size, hidden_size)), nn.ReLU(),
             # nn.BatchNorm1d(hidden_size,affine=False), nn.ReLU(),
@@ -272,7 +295,6 @@ class ActorCritic(nn.Module):
             # init_(nn.Linear(128, 128)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
             # init_(nn.Linear(256, 256)), nn.ReLU(),
-
         )
         self.critic_out = init_(nn.Linear(hidden_size, 1))
 

@@ -59,6 +59,7 @@ class Agent:
         self._hidden_states.clear()
         # self._frame_buffer.refresh()
     
+    
     def reward_util(self,info, obs_tp1, ev_sp, end_at, punish_ratio=-.001):
         """duration rewards craft
         
@@ -92,7 +93,7 @@ class Agent:
         u_f = torch.from_numpy(unit_feature_encoder(unit,self.map_size)).unsqueeze(0).float().to(device)
 
         with torch.no_grad():
-            v, p, _ = self.brain.forward( obs_t, u_f, unit.type)
+            v, p, _ = self.brain.forward(obs_t, u_f, unit.type)
             # obs_act = copy.deepcopy(obs_t)
             # obs_act[0,-7:,unit.x, unit.y][act] = 1 
             # v = self.brain.critic_forward(obs_act)
@@ -115,12 +116,17 @@ class Agent:
 
     # def get_memory(self):
     #     return self._memory
+    def semi_mdp_rew(self, dura_rews, discount):
+        di_rew = .0
+        for r in dura_rews[::-1]:
+            di_rew = .99 * di_rew + r
+        return di_rew
     
     def sum_up(self,sp_ac=None, callback=None, **kwargs):
         self.think(sp_ac,callback, **kwargs)
 
     def think(self,sp_ac=None, callback=None,way="stochastic", **kwargs):
-        """figure out the action according to helper function and obs, store env related action to itself and \
+        """call this function in every time step,figure out the action according to helper function and obs, store env related action to itself and \
             nn related result to Replay Buffer. More
         Arguments:
             kwargs: 
@@ -130,15 +136,45 @@ class Agent:
         Returns:
             [(Unit, int)] -- list of NETWORK unit actions    
         """
+        def push2buffer():
+            rewards = self.units_on_working[_id][3][1:]
+            irew = (0.99) ** len(rewards) * rewards[-1]
+            di_rew = self.semi_mdp_rew(rewards,0.99)
+            print(di_rew)
+            # input()
+            transitions ={
+                    "obs_t":self.units_on_working[_id][0],
+                    "action":self.units_on_working[_id][1],
+                    "obs_tp1":np.copy(obs),
+                    # "reward":self.units_on_working[_id][3],
+                    "reward":di_rew,
+                    # "reward": self.reward_util(ev_sp=ev,obs_tp1=obs, end_at=time_stamp,info=self.units_on_working[_id]),
+                    # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
+                    "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
+                    "done":done,
+                    "duration": time_stamp - self.units_on_working[_id][2],
+                    "ctf": self.ctf_adv(self.units_on_working[_id],device),
+                    "irew":irew,
+
+                }
+                # self.memory.push(**transitions)
+            if callback:
+                callback(transitions)
+            # print(self.units_on_working[_id][3])
+
+
+            # input()
+    
         assert self.brain is not None
         # self.player_actions.clear()
         obses = kwargs["obses"]
 
         obs     = obses.observation
         info    = obses.info
-        ev      = obses.ev 
+        reward      = obses.reward 
         done    = obses.done
         time_stamp = info["time_stamp"]
+
 
         if "accelerator" in kwargs:
             device = kwargs["accelerator"]
@@ -151,30 +187,20 @@ class Agent:
             mode = "eval"
         
         del kwargs
+
+        for _id in self.units_on_working:
+            # print(self.units_on_working[_id][3])
+            self.units_on_working[_id][3].append(reward)
         
         # self._frame_buffer.push(obs)
         # # obs = self._frame_buffer.fetch()
 
         # obs = self._frame_buffer.flatten()
 
-        if mode=='train' and done == 2: # gameover timeup state, should not sample actions, add transition by force
+        if mode=='train' and done == 1: # gameover state, should not sample actions, add transition by force
             # print( info['unit_valid_actions']) # []
             for _id in self.units_on_working:
-                transitions ={
-                    "obs_t":self.units_on_working[_id][0],
-                    "action":self.units_on_working[_id][1],
-                    "obs_tp1":np.copy(obs),
-                    "reward": self.reward_util(ev_sp=ev,obs_tp1=obs, end_at=time_stamp,info=self.units_on_working[_id]),
-                    # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
-                    "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
-                    "done":done,
-                    "duration": time_stamp - self.units_on_working[_id][2],
-                    "adv": self.ctf_adv(self.units_on_working[_id],device),
-
-                }
-                # self.memory.push(**transitions)
-                if callback:
-                    callback(transitions)
+                push2buffer()
             return []
 
 
@@ -215,8 +241,6 @@ class Agent:
             for i, s in enumerate(samples): # figure out the subject of the hxses:
                 self._hidden_states[str(s[0].unit.ID)] = hxses[:][i][:]
 
-        transition = {}
-        count = 0
 
         if mode == "train" and sampler is not network_simulator:
         # if mode == "train" and sampler:
@@ -229,58 +253,16 @@ class Agent:
             for _id in self.units_on_working:
                 if int(_id) not in units_on_field:
                     key_to_del.append(_id)
-                    transitions={
-                            "obs_t":self.units_on_working[_id][0],
-                            "action":self.units_on_working[_id][1],
-                            "obs_tp1":np.copy(obs),
-                            "reward": self.reward_util(ev_sp=ev,obs_tp1=obs, end_at=time_stamp,info=self.units_on_working[_id]),
-
-                            # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
-                            "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
-                            "done":done,
-                            "duration": time_stamp - self.units_on_working[_id][2],
-                            "adv": self.ctf_adv(self.units_on_working[_id],device),
-
-                        }
-                    # self.memory.push(**transitions)
-                    if callback:
-                        callback(transitions)
+                    push2buffer()
             for k in key_to_del:
                 del self.units_on_working[k]
 
             for u, a in network_unit_actions:
                 _id = str(u.ID)
-                if _id in self.units_on_working:
-                    # print(reward, a)
-                    # input()
-                    # self.ctf_adv(self.units_on_working[_id])
-                    transition = {
-                        "obs_t":self.units_on_working[_id][0],
-                        "action":self.units_on_working[_id][1],
-                        "obs_tp1":np.copy(obs),
-                        # "reward":reward - 0.1 * (time_stamp - self.units_on_working[_id][2]),
-                        "reward": self.reward_util(ev_sp=ev,obs_tp1=obs, end_at=time_stamp,info=self.units_on_working[_id]),
-                        "hxs":self._hidden_states[_id] if _id in self._hidden_states else None,
-                        "done":done,
-                        "duration": time_stamp - self.units_on_working[_id][2],
-                        "adv": self.ctf_adv(self.units_on_working[_id],device),
-
-                        }      
-                    # print(reward)
-                    # print(self.brain.critic_forward(torch.from_numpy(transition['obs_t']).float().unsqueeze(0)))
-                    count += 1
+                if _id in self.units_on_working: 
+                    push2buffer()
                 ####################################      0          1         2      3
-                self.units_on_working[str(u.ID)] = (np.copy(obs), (u, a), time_stamp, ev)
-                # push to agents' memory
-                # if transition:
-                #     self._memory.push(**transition)
-                #     transition.clear()
-                if transition:
-                    # self.memory.push(**transition)
-                    if callback:
-                        callback(transitions=transition)
-                    count = 0
-                    transition.clear()
+                self.units_on_working[str(u.ID)] = [np.copy(obs), (u, a), time_stamp, [reward]]
         else:
             # print("network simulator")
             pass
