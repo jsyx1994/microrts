@@ -38,6 +38,7 @@ class FrameBuffer:
         return self._storage.reshape(-1, *self._shape[-2:])
 
 class Agent:
+    gamma = 0.99
     def __init__(self, model, memory_size=10000, random_rollout_steps=128, smooth_sample_ratio=None, map_size=(4,4)):
         self.rewards = 0
         self.steps = 0
@@ -49,7 +50,8 @@ class Agent:
         self.smooth_sample_ratio = smooth_sample_ratio
         self.memory = ReplayBuffer(memory_size)
         self.map_size = map_size
-
+        # print(self.gamma)
+        # input()
         # self.last = []
 
     def forget(self):
@@ -138,7 +140,7 @@ class Agent:
         """
         def push2buffer():
             rewards = self.units_on_working[_id][3][1:]
-            irew = (0.99) ** len(rewards) * rewards[-1]
+            irew = self.gamma ** len(rewards) * rewards[-1]
             di_rew = self.semi_mdp_rew(rewards,0.99)
             print(di_rew)
             # input()

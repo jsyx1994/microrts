@@ -120,11 +120,11 @@ class A2C:
                 else:
                     value, probs, _ = nn.forward(actor_type=key,spatial_feature=states,unit_feature=units)
                 # print(value)
-                # m = torch.distributions.Categorical(probs=probs)
+                m = torch.distributions.Categorical(probs=probs)
                 # print(probs.is_leaf)
                 # input()
                 # entropy = - (probs * torch.log(probs)).mean(dim=1)
-                entropy = - (probs * torch.log(probs)).sum()
+                # entropy = - (probs * torch.log(probs)).sum()
 
                 value_next = nn.critic_forward(next_states).detach()
                 # probs_next, _ = nn.actor_forward(actor_type=key,spatial_feature=states,unit_feature=units)
@@ -155,7 +155,7 @@ class A2C:
                 # print(adv)
                 # print(m.entropy())
                 # input()
-                entropy_loss = -entropy.mean()
+                entropy_loss = -m.entropy().mean()
                 policy_loss = -(torch.log(pi_sa) * adv).mean()
                 # print(len(rewards))
                 # input()

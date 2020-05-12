@@ -61,9 +61,8 @@ def play(args):
     config.render = args.render
     config.ai2_type = args.opponent
     config.max_episodes = int(args.episodes)
-    # config.render=1
     map_size = config.height, config.width
-    # max_episodes = args.episodes
+    Agent.gamma = args.gamma
 
     memory = ReplayBuffer(10000)
 
@@ -79,7 +78,7 @@ def play(args):
     # input()
     nn.to(device)
     num_process = args.num_process
-    league = ['socketAI' for _ in range(num_process)]
+    league = [args.opponent for _ in range(num_process)]
     cmd_league  =args.league.split(',')
     if num_process < len(cmd_league):
         print('The league input is larger than the number of process, will not use league learning')
@@ -87,9 +86,10 @@ def play(args):
         print("league learning staring")
         for i, x in enumerate(cmd_league):
             print(x)
-            league[i] = x
+            if x!="None":
+                league[i] = x
     print('All leagues participated are', league)
-
+    # input()
     envs, agents = make_vec_envs(args.env_id, num_process, "fork", nn, league=league)
     buffers = [ReplayBuffer(config.max_cycles + 100) for _ in range(len(agents))]
     import time
@@ -143,7 +143,8 @@ def play(args):
                     action = [] # reset
                     epi_idx += .5
                     time_stamp.append(obses_n[i][j].info["time_stamp"])
-                    writer.add_scalar("rewards", agents[i][j].rewards / (obses_n[i][j].info["time_stamp"]), epi_idx)
+                    writer.add_scalar("rewards_per_step", agents[i][j].rewards / (obses_n[i][j].info["time_stamp"]), epi_idx)
+                    writer.add_scalar("rewards", agents[i][j].rewards, epi_idx)
                     if args.algo == 'ppo':
                         agents[i][j].sum_up(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
                     elif args.algo == 'a2c':
@@ -255,7 +256,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--league",
-        default='socketAI',
+        default='None',
     )
     args = parser.parse_args()
     print(args.league)
