@@ -68,7 +68,8 @@ class A2C:
         log_interval=100,
         gamma=0.99,
         entropy_coef=.01,
-        value_loss_coef=1
+        value_loss_coef=1,
+        debug=False,
         ):
         self.actor_critic = ac_model
         # self.optimizer = optim.RMSprop(ac_model.parameters(), lr, weight_decay=weight_decay)

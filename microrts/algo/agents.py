@@ -124,10 +124,10 @@ class Agent:
             di_rew = .99 * di_rew + r
         return di_rew
     
-    def sum_up(self,sp_ac=None, callback=None, **kwargs):
+    def sum_up(self,sp_ac=None, callback=None,debug=False, **kwargs):
         self.think(sp_ac,callback, **kwargs)
 
-    def think(self,sp_ac=None, callback=None,way="stochastic", **kwargs):
+    def think(self,sp_ac=None, callback=None,way="stochastic",debug=False, **kwargs):
         """call this function in every time step,figure out the action according to helper function and obs, store env related action to itself and \
             nn related result to Replay Buffer. More
         Arguments:
@@ -139,10 +139,12 @@ class Agent:
             [(Unit, int)] -- list of NETWORK unit actions    
         """
         def push2buffer():
-            rewards = self.units_on_working[_id][3][1:]
+            rewards = self.units_on_working[_id][3][1:] # the first elements is t-1 reward,exclude
+            # self.rewards += rewards # counts common pay-off rewards for agent
             irew = self.gamma ** len(rewards) * rewards[-1]
             di_rew = self.semi_mdp_rew(rewards,0.99)
-            print(di_rew)
+            self.rewards += di_rew
+            # print(di_rew)
             # input()
             transitions ={
                     "obs_t":self.units_on_working[_id][0],
@@ -232,6 +234,7 @@ class Agent:
                 device=device,
                 mode=way,
                 hidden_states=self._hidden_states,
+                debug=debug,
                 )
 
 

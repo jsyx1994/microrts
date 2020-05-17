@@ -19,7 +19,8 @@ class PPO:
         log_interval=100,
         gamma=0.99,
         entropy_coef=.01,
-        value_loss_coef=1
+        value_loss_coef=1,
+        debug=False,
         ):
         self.actor_critic = ac_model
         self.target_net = copy.deepcopy(ac_model)
@@ -32,6 +33,7 @@ class PPO:
         self.value_loss_coef = value_loss_coef
         self.eps = eps
         self.log_interval = log_interval
+        self.debug=debug
 
 
     def update(self, rollouts: ReplayBuffer, iter_idx, device="cpu", callback=None):
@@ -77,7 +79,8 @@ class PPO:
                 # m = torch.distributions.Categorical(probs=probs_next)
 
                 # rewards = rewards + m.entropy().unsqueeze(0)
-                print(value)
+                # if self.debug:
+                #     print(value)
                 # rewards = (rewards - rewards.mean()) / (rewards.std()+1e-3) 
                 pi_sa = probs.gather(1, actions)
                 pi_sa_old = probs_old.gather(1,actions)
@@ -139,6 +142,6 @@ class PPO:
         #     self.target_net = copy.deepcopy(self.actor_critic)
         #     # self.target_net.parameters = 0.001 * self.actor_critic.parameters + 0.999 * self.target_net.parameters
         with torch.no_grad():
-            soft_update(self.target_net, self.actor_critic, tau=0.01)           
+            soft_update(self.target_net, self.actor_critic, tau=0.0001)           
         rollouts.refresh()
 

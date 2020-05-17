@@ -69,7 +69,8 @@ def play(args):
     if start_from_scratch:
         nn = ActorCritic(map_size)
     else:
-        nn = load_model(nn_path, map_size)
+        nn = load_model(os.path.join(settings.models_dir, nn_path), map_size, args.recurrent)
+
     
     # nn.share_memory()
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -107,6 +108,7 @@ def play(args):
             weight_decay=3e-6,
             log_interval=args.log_interval,
             gamma=args.gamma,
+            debug=args.debug,
         )
     elif args.algo == "ppo":
         algo = PPO(
@@ -117,6 +119,7 @@ def play(args):
             weight_decay=3e-6,
             log_interval=args.log_interval,
             gamma=args.gamma,
+            debug=args.debug,
             )
     writer = SummaryWriter()
     iter_idx = 0
@@ -136,9 +139,9 @@ def play(args):
 
                 if not obses_n[i][j].done:
                     if args.algo == 'ppo':
-                        action = agents[i][j].think(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                        action = agents[i][j].think(sp_ac=algo.target_net,callback=memo_inserter,debug=args.debug, obses=obses_n[i][j], accelerator=device, mode="train")
                     elif args.algo == 'a2c':
-                        action = agents[i][j].think(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                        action = agents[i][j].think(callback=memo_inserter,debug=args.debug, obses=obses_n[i][j], accelerator=device, mode="train")
                 else:
                     action = [] # reset
                     epi_idx += .5
@@ -146,9 +149,9 @@ def play(args):
                     writer.add_scalar("rewards_per_step", agents[i][j].rewards / (obses_n[i][j].info["time_stamp"]), epi_idx)
                     writer.add_scalar("rewards", agents[i][j].rewards, epi_idx)
                     if args.algo == 'ppo':
-                        agents[i][j].sum_up(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                        agents[i][j].sum_up(sp_ac=algo.target_net,callback=memo_inserter,debug=args.debug, obses=obses_n[i][j], accelerator=device, mode="train")
                     elif args.algo == 'a2c':
-                        agents[i][j].sum_up(callback=memo_inserter, obses=obses_n[i][j], accelerator=device, mode="train")
+                        agents[i][j].sum_up(callback=memo_inserter,debug=args.debug, obses=obses_n[i][j], accelerator=device, mode="train")
                     # buffers[i]
                     agents[i][j].forget()
                 action_i.append(action)
@@ -257,6 +260,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--league",
         default='None',
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
     )
     args = parser.parse_args()
     print(args.league)

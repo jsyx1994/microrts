@@ -74,7 +74,7 @@ def action_sampler_v1(model, state, info, device='cpu', mode='stochastic', callb
     return samples
 
 
-def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden_states:dict=None, callback=None):
+def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden_states:dict=None, callback=None, debug=False):
     # import time
     assert mode in ['stochastic', 'deterministic']
     unit_valid_actions = info["unit_valid_actions"]  # available unit and its valid actions
@@ -161,8 +161,9 @@ def action_sampler_v2(model, state, info, device='cpu', mode='stochastic',hidden
                     m = Categorical(probs)
                     
                     # print(state)
-                    print(probs)
-                    print(value)
+                    if debug:
+                        print(probs)
+                        print(value)
                     # print(m.entropy())
                     # input()
 

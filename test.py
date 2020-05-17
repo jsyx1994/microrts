@@ -95,21 +95,21 @@ def self_play(args):
             for i in range(len(players)):
                 if args.algo == 'ppo':
                     # action = agents[i].think(sp_ac=algo.target_net,callback=None, obses=obses_t[i], accelerator=device, mode="train")
-                    action = agents[i].think(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
+                    action = agents[i].think(sp_ac=algo.target_net,debug=args.debug,callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
                 elif args.algo == 'a2c':
                     # action = agents[i].think(callback=None, obses=obses_t[i], accelerator=device, mode="train")
-                    action = agents[i].think(callback=memo_inserter, obses=obses_t[i], accelerator=device, mode="train")
+                    action = agents[i].think(callback=memo_inserter,debug=args.debug, obses=obses_t[i], accelerator=device, mode="train")
                 actions.append(action)
             obses_tp1 = env.step(actions)
             if obses_tp1[0].done:
                 # print(obses_tp1[0].done)
                 for agent in agents:
                     if args.algo == 'ppo':
-                        agents[i].sum_up(sp_ac=algo.target_net,callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+                        agents[i].sum_up(sp_ac=algo.target_net,debug=args.debug,callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
                         # agents[i].sum_up(sp_ac=algo.target_net,callback=None, obses=obses_tp1[i], accelerator=device, mode="train")
                     
                     elif args.algo == 'a2c':
-                        agents[i].sum_up(callback=memo_inserter, obses=obses_tp1[i], accelerator=device, mode="train")
+                        agents[i].sum_up(callback=memo_inserter,debug=args.debug, obses=obses_tp1[i], accelerator=device, mode="train")
                         # agents[i].sum_up(callback=None, obses=obses_tp1[i], accelerator=device, mode="train")
 
                     agent.forget()
@@ -207,6 +207,11 @@ if __name__ == '__main__':
     parser.add_argument(
         "--algo",
         default='a2c',
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=False,
     )
     args = parser.parse_args()
     print(args)
