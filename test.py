@@ -55,9 +55,8 @@ def self_play(args):
     import time
     writer = SummaryWriter()
     iter_idx = 0
-    
 
-    agents = [Agent(model=nn, smooth_sample_ratio=0) for _ in range(env.players_num)]
+    agents = [Agent(model=nn, smooth_sample_ratio=0,map_size=env.map_size) for _ in range(env.players_num)]
     if args.algo == "a2c":
         algo = A2C(
             ac_model=nn,
@@ -111,8 +110,17 @@ def self_play(args):
                     elif args.algo == 'a2c':
                         agents[i].sum_up(callback=memo_inserter,debug=args.debug, obses=obses_tp1[i], accelerator=device, mode="train")
                         # agents[i].sum_up(callback=None, obses=obses_tp1[i], accelerator=device, mode="train")
-
-                    agent.forget()
+                for i in range(len(players)):
+                    # print(agents[i].rewards)
+                    writer.add_scalar("p" + str(i) + "_rewards", agents[i].rewards, epi_idx)
+                    writer.add_scalar("p" + str(i) + "_rewards_per_step", agents[i].rewards/obses_t[i].info["time_stamp"],epi_idx)
+                    # writer.add_scalar("rewards_per_step", agents[i].rewards / (obses_t[i].info["time_stamp"]), epi_idx)
+                    # writer.add_scalar("rewards", agents[i].rewards, epi_idx)
+                    # writer.add_scalar("P0_rewards", agents[0].rewards/obses_t[i].info["time_stamp"], epi_idx)
+                    # writer.add_scalar("P1_rewards", agents[1].rewards/obses_t[i].info["time_stamp"], epi_idx)
+                    # writer.add_scalar("Return_diff", agents[0].rewards - agents[1].rewards , epi_idx)
+                    writer.add_scalar("TimeStamp", obses_t[i].info["time_stamp"]  , epi_idx)
+                    agents[i].forget()
             # if len(memory) >= update_step:
             # # if step >= 5:
             #     algo.update(memory, iter_idx, device, logger)
@@ -132,10 +140,6 @@ def self_play(args):
 
         # print(players_G0)
         winner = obses_tp1[0].info["winner"]
-        writer.add_scalar("P0_rewards", agents[0].rewards/obses_t[i].info["time_stamp"], epi_idx)
-        # writer.add_scalar("P1_rewards", agents[1].rewards/obses_t[i].info["time_stamp"], epi_idx)
-        # writer.add_scalar("Return_diff", agents[0].rewards - agents[1].rewards , epi_idx)
-        writer.add_scalar("TimeStamp", obses_t[i].info["time_stamp"]  , epi_idx)
 
         print("Winner is:{}, FPS: {}".format(winner,obses_t[i].info["time_stamp"] / (time.time() - start_time)))
         

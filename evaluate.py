@@ -76,9 +76,9 @@ def evaluate(
                 # actions.append(players[i].think(obs=obses_t[i].observation, info=obses_t[i].info, accelerator=device))
                 # _st = time.time()
                 if stochastic:
-                    action = agents[i].think(obses=obses_t[i], way="stochastic", accelerator=device,mode="eval")
+                    action = agents[i].think(obses=obses_t[i],debug=args.debug, way="stochastic", accelerator=device,mode="eval")
                 else:
-                    action = agents[i].think(obses=obses_t[i], way="deterministic", accelerator=device,mode="eval")
+                    action = agents[i].think(obses=obses_t[i],debug=args.debug, way="deterministic", accelerator=device,mode="eval")
                 if not fast_forward:
                     print(action)
                     input()
@@ -133,6 +133,11 @@ if __name__ == "__main__":
     parser.add_argument(
         '--opponent',
         default='Passive'
+    )    
+    parser.add_argument(
+        '--debug',
+         action="store_true",
+        default=False,
     )
     args = parser.parse_args()
     print(args)

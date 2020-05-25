@@ -91,7 +91,7 @@ def play(args):
                 league[i] = x
     print('All leagues participated are', league)
     # input()
-    envs, agents = make_vec_envs(args.env_id, num_process, "fork", nn, league=league)
+    envs, agents = make_vec_envs(args.env_id, num_process, "fork", nn, league=league, map_size=map_size)
     buffers = [ReplayBuffer(config.max_cycles + 100) for _ in range(len(agents))]
     import time
     frames = 0

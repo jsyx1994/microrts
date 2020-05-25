@@ -443,15 +443,15 @@ class ActorCritic(nn.Module):
         # x = self.shared_to_actor(x)
         # x = x.detach() 
 
-
-        x = torch.cat([x, unit_feature], dim=1)
-        # print(x.size())
-        # input()
-        # x = self.actor_mlps(x)
         if self.recurrent:
             x, hxs = self.gru(x.unsqueeze(0), hxses)
             x = x.squeeze(0)
             # x = self.layer_norm(x)
+        x = torch.cat([x, unit_feature], dim=1)
+        # print(x.size())
+        # input()
+        # x = self.actor_mlps(x)
+        
         # x, hxs =self.gru(x.unsqueeze(0), torch.randn(1,x.size(0),128))
 
         # print(x)

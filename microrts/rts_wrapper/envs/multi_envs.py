@@ -27,7 +27,7 @@ def make_env(env_id, opponent="socketAI"):
     return _thunk
 
 
-def make_vec_envs(env_id, num_processes, context, model,league,smooth_raitio=0, ):
+def make_vec_envs(env_id, num_processes, context, model,league,smooth_raitio=0,map_size=(4,4) ):
     
     assert num_processes > 0, "Can not make no env!"
     assert len(league) <= num_processes, "league number overflow!"
@@ -48,7 +48,7 @@ def make_vec_envs(env_id, num_processes, context, model,league,smooth_raitio=0, 
     nagents = [2 if league[i]=='socketAI' else 1 for i in range(num_processes)]
 
 
-    agents = [[Agent(model,smooth_sample_ratio=smooth_raitio) for _ in range(nagents[i])] for i in range(num_processes)]
+    agents = [[Agent(model,smooth_sample_ratio=smooth_raitio,map_size=map_size) for _ in range(nagents[i])] for i in range(num_processes)]
 
 
     envs = ParallelVecEnv(envs, context=context)

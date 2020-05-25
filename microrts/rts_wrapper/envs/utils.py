@@ -1509,9 +1509,9 @@ def unit_feature_encoder(unit:Unit, map_size:list):
 
     loc_x_feature = np.eye(1,map_width,k=unit_x)[0]
     loc_y_feature = np.eye(1,map_height,k=unit_y)[0]
-    loc_feature = np.zeros(map_size)
-    loc_feature[unit_x][unit_y] = 1
-    loc_feature = loc_feature.flatten()
+    # loc_feature = np.zeros(map_size)
+    # loc_feature[unit_x][unit_y] = 1
+    # loc_feature = loc_feature.flatten()
 
     unit_feature = np.hstack(
         (
