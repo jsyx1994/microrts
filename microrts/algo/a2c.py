@@ -146,7 +146,7 @@ class A2C:
                 #         ratio.append([irews[i]/rewards[i]])
                 # ratio = torch.Tensor(ratio)
                 # print(ratio)
-                advantages = targets - ctfs
+                advantages = targets - value
 
                 # advantages = rets - value
                 # advantages = rewards[:-1] + self.gamma ** durations * value[1:] - value.detach()

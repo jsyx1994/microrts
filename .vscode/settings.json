@@ -1,5 +1,5 @@
 {
-    "python.pythonPath": "venv/bin/python",
+    "python.pythonPath": "/home/sakura/anaconda3/envs/microrts/bin/python",
     "python.terminal.activateEnvironment": true,
     "python.linting.enabled": true,
     "autoDocstring.docstringFormat": "default",

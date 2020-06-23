@@ -93,7 +93,7 @@ class PPO:
                 targets = rewards -  .0 * log_pi_sa + self.gamma ** durations  * value_next * done_masks
                 
 
-                advantages = (targets - ctf_v).detach()
+                advantages = (targets - value).detach()
                 # print(m.entropy())
                 # input()
                 # entropy_loss = -entropy.mean()
@@ -142,6 +142,6 @@ class PPO:
         #     self.target_net = copy.deepcopy(self.actor_critic)
         #     # self.target_net.parameters = 0.001 * self.actor_critic.parameters + 0.999 * self.target_net.parameters
         with torch.no_grad():
-            soft_update(self.target_net, self.actor_critic, tau=0.001)           
+            soft_update(self.target_net, self.actor_critic, tau=0.01)           
         rollouts.refresh()
 
