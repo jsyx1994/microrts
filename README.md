@@ -25,4 +25,22 @@
 - 在每次修改java程序后（比如python与java的通信机制），需要编译并生成对应的jar文件，替换- microrts/rts_wrapper/microrts-java.jar
 
 ## 自定义地图
-运行java游戏引擎，通过地图编辑器编辑地图
+运行java游戏引擎，通过地图编辑器编辑地图,保存文件到 microrts/rts_wrapper/maps，然后在`microrts/rts_wrapper/__init__.py`中添加相应的项
+![image](https://user-images.githubusercontent.com/18167093/94994963-91f32e00-05cd-11eb-827a-46e49ae59767.png)
+
+## 修改算法
+位于microrts/algo均可根据效果自行调整
+
+## 定义元数据类型（包括java端与python端的）
+包含不同智能体网络的输出动作类型与其他元数据类型（例如通信的message等）
+- 修改microrts/rts_wrapper/envs/datatypes.py
+
+## 修改多线程实现
+microrts/rts_wrapper/envs/multi_envs.py，可参考openai的实现
+
+## 修改通信机制
+需要同时修改java文件中gym部分<img width="817" alt="Screen Shot 2020-10-03 at 11 17 42 PM" src="https://user-images.githubusercontent.com/18167093/94995127-bc91b680-05ce-11eb-8eb6-bd8fa41c8ad7.png">
+与microrts/rts_wrapper/player模块，其他相关部分可能也会涉及，记不清了
+
+## paper
+https://link.springer.com/chapter/10.1007/978-981-15-7670-6_36
